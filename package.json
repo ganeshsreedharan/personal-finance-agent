@@ -1,0 +1,55 @@
+{
+  "name": "personal-finance-agent",
+  "version": "1.0.0",
+  "description": "AI-powered personal finance tracking via Telegram",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "finance",
+    "ai",
+    "gemini",
+    "expense-tracker"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@mastra/core": "^0.1.0",
+    "@ai-sdk/google": "^1.0.0",
+    "@google/generative-ai": "^0.21.0",
+    "grammy": "^1.30.0",
+    "mongodb": "^6.12.0",
+    "zod": "^3.24.1",
+    "dotenv": "^16.4.7",
+    "pdf-parse": "^2.4.5",
+    "date-fns": "^4.1.0",
+    "node-cron": "^3.0.3",
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/pdf-parse": "^1.1.4",
+    "@types/node-cron": "^3.0.11",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8",
+    "eslint": "^9.18.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "prettier": "^3.4.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
