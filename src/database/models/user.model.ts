@@ -8,9 +8,9 @@ import { SUPPORTED_CURRENCIES } from '../../config/index.js';
 export const UserSchema = z.object({
   _id: z.instanceof(ObjectId).optional(),
   telegramId: z.number().positive('Telegram ID must be positive'),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  username: z.string().optional(),
+  firstName: z.string().nullish(),
+  lastName: z.string().nullish(),
+  username: z.string().nullish(),
   defaultCurrency: z.enum(SUPPORTED_CURRENCIES).default('EUR'),
   timezone: z.string().default('Europe/Berlin'),
   recurringBills: z
@@ -66,9 +66,9 @@ export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
 export interface UserDocument {
   _id?: ObjectId;
   telegramId: number;
-  firstName?: string;
-  lastName?: string;
-  username?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
   defaultCurrency: string;
   timezone: string;
   recurringBills: Array<{

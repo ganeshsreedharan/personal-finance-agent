@@ -49,7 +49,17 @@ export const FILE_LIMITS = {
 } as const;
 
 /**
+ * Gemini AI configuration
+ */
+export const GEMINI_CONFIG = {
+  MODEL_NAME: 'gemini-flash-latest',
+  REQUESTS_PER_MINUTE: 15,
+  REQUESTS_PER_DAY: 1500,
+} as const;
+
+/**
  * Rate limiting
+ * @deprecated Use GEMINI_CONFIG instead
  */
 export const RATE_LIMITS = {
   GEMINI_REQUESTS_PER_MINUTE: 15,

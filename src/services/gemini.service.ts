@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
-import { env } from '../config/index.js';
+import { env, GEMINI_CONFIG } from '../config/index.js';
 
 /**
  * Gemini AI Service
@@ -12,7 +12,7 @@ class GeminiService {
   constructor() {
     this.client = new GoogleGenerativeAI(env.GOOGLE_API_KEY);
     this.model = this.client.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: GEMINI_CONFIG.MODEL_NAME,
     });
   }
 
@@ -22,7 +22,7 @@ class GeminiService {
   async generateJSON<T>(prompt: string, schema: object): Promise<T> {
     try {
       const model = this.client.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: GEMINI_CONFIG.MODEL_NAME,
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema: schema,
@@ -61,7 +61,7 @@ class GeminiService {
   async extractFromPhoto(imageBase64: string, mimeType: string): Promise<object> {
     try {
       const model = this.client.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: GEMINI_CONFIG.MODEL_NAME,
       });
 
       const result = await model.generateContent([
@@ -91,7 +91,7 @@ class GeminiService {
   async extractFromPDF(pdfBase64: string): Promise<object> {
     try {
       const model = this.client.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: GEMINI_CONFIG.MODEL_NAME,
       });
 
       const result = await model.generateContent([

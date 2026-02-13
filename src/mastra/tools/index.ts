@@ -1,7 +1,9 @@
 /**
- * Transaction processing tools
+ * Mastra tools exports
+ *
+ * Following proper agentic pattern:
+ * - Agent does all LLM reasoning (parsing, categorizing)
+ * - Tools do simple operations (database, API calls)
  */
 
-export * from './text-parser.tool.js';
-export * from './categorizer.tool.js';
-export * from './transaction-storage.tool.js';
+export { transactionStorageTool } from './transaction-storage.tool.js';

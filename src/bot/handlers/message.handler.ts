@@ -1,9 +1,14 @@
 import type { BotContext } from '../telegram.js';
-import { processTextTransaction } from '../../mastra/index.js';
+import { getFinanceAgent } from '../../mastra/index.js';
 
 /**
  * Handle text messages
- * Phase 2: Process transactions with Mastra agent + Gemini
+ * Phase 2: Process transactions with Mastra Agent + Gemini AI
+ *
+ * The agent uses tools to:
+ * 1. Parse transaction from natural language
+ * 2. Categorize the transaction
+ * 3. Store in MongoDB
  */
 export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
   const message = ctx.message?.text;
@@ -13,23 +18,27 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
   }
 
   try {
-    // Process transaction using workflow
-    const result = await processTextTransaction({
-      userId: ctx.userId,
-      text: message,
-    });
+    // Get the finance agent
+    const agent = getFinanceAgent();
 
-    // Reply with result
-    await ctx.reply(result.message);
+    // Agent decides which tools to use and in what order
+    // We pass both the user message and the userId in the context
+    const response = await agent.generate([
+      {
+        role: 'user',
+        content: `${message}\n\nContext: userId="${ctx.userId}"`,
+      },
+    ]);
 
-    // Log for debugging
-    if (result.success) {
-      console.log(`[User ${ctx.userId}] Transaction logged: ${result.transactionId}`);
-    } else {
-      console.warn(`[User ${ctx.userId}] Transaction failed: ${result.error}`);
-    }
+    // Send agent's response to user
+    await ctx.reply(response.text);
+
+    // Log agent execution
+    console.log(`[User ${ctx.userId}] Agent processed: "${message}"`);
+    console.log(`[User ${ctx.userId}] Tool calls: ${response.steps?.length || 0} steps`);
+
   } catch (error) {
-    console.error('Error handling text message:', error);
+    console.error('Error with finance agent:', error);
     await ctx.reply('Sorry, something went wrong processing your transaction. Please try again.');
   }
 };
