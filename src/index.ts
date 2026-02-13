@@ -1,19 +1,9 @@
 /**
  * Personal Finance AI Agent - Entry Point
- * Phase 1: Foundation - Basic bot with text echo
+ * Phase 2: Core Agent - Full agentic pattern
  */
 
-import {
-  createBot,
-  startBot,
-  handleTextMessage,
-  handleStartCommand,
-  handleHelpCommand,
-  handleSummaryCommand,
-  handleMonthlyCommand,
-  handlePhoto,
-  handleDocument,
-} from './bot/index.js';
+import { createBot, startBot, handleTextMessage, handlePhoto, handleDocument } from './bot/index.js';
 import { dbClient } from './database/index.js';
 import { env } from './config/index.js';
 
@@ -35,13 +25,8 @@ const main = async (): Promise<void> => {
     console.log('🤖 Initializing Telegram bot...');
     const bot = createBot();
 
-    // Register command handlers
-    bot.command('start', handleStartCommand);
-    bot.command('help', handleHelpCommand);
-    bot.command('summary', handleSummaryCommand);
-    bot.command('monthly', handleMonthlyCommand);
-
-    // Register message handlers
+    // Register message handlers - Agent handles EVERYTHING
+    // No separate command handlers - true agentic pattern!
     bot.on('message:text', handleTextMessage);
     bot.on('message:photo', handlePhoto);
     bot.on('message:document', handleDocument);
