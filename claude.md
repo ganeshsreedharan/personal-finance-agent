@@ -6,6 +6,28 @@
 
 ---
 
+## ⚠️ IMPORTANT: Workflow Rules for Claude
+
+**Git Commit/Push Workflow:**
+1. **NEVER commit or push without explicit user confirmation**
+2. After implementing changes, ALWAYS:
+   - Show what was changed
+   - Explain the changes
+   - Ask: "Should I commit and push these changes?"
+   - WAIT for user response
+3. Only proceed with commit/push after user says "yes", "go ahead", "push it", etc.
+4. If user wants to test first, wait for their feedback
+
+**Why this matters:**
+- User needs to review code before it goes to GitHub
+- User may want to test locally first
+- Rushing to push can waste effort if changes need adjustment
+- Respecting user's review process is critical
+
+**Exception:** Only push without asking if user explicitly says "commit and push" or "push it now" in their message.
+
+---
+
 ## 📖 What Is This Project?
 
 A **Telegram bot** that tracks personal finances using **AI**. Users send expenses via:
