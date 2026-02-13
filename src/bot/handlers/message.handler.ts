@@ -18,6 +18,10 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
   }
 
   try {
+    // Show "typing..." indicator while agent thinks
+    // This provides immediate feedback to the user (lasts 5 seconds)
+    await ctx.replyWithChatAction('typing');
+
     // Get the finance agent
     const agent = getFinanceAgent();
 
