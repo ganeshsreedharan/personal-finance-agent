@@ -14,19 +14,19 @@ const envSchema = z.object({
   ALLOWED_USER_IDS: z
     .string()
     .optional()
+    .default('')
     .transform(val => {
       if (!val || val.trim() === '') {
         return [];
       }
       return val.split(',').map(id => parseInt(id.trim(), 10));
-    })
-    .default(''),
+    }),
 
-  // Google Gemini AI
-  GOOGLE_API_KEY: z.string().min(1, 'Google API key is required'),
+  // Google Gemini AI (@ai-sdk/google reads this automatically)
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1, 'Google Generative AI API key is required'),
 
   // MongoDB
-  MONGODB_URI: z.string().url('MongoDB URI must be a valid URL'),
+  MONGODB_URI: z.url('MongoDB URI must be a valid URL'),
   MONGODB_DATABASE: z.string().default('finance-agent'),
 
   // Storage
@@ -35,8 +35,8 @@ const envSchema = z.object({
   // Scheduler
   ENABLE_SCHEDULER: z
     .string()
-    .transform(val => val === 'true')
-    .default('false'),
+    .default('false')
+    .transform(val => val === 'true'),
   WEEKLY_SUMMARY_CRON: z.string().default('0 9 * * 1'),
   MONTHLY_SUMMARY_CRON: z.string().default('0 9 1 * *'),
 
@@ -51,7 +51,7 @@ const parseEnv = () => {
     return envSchema.parse(process.env);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const missingVars = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      const missingVars = error.issues.map((err: z.core.$ZodIssue) => `${err.path.join('.')}: ${err.message}`);
       throw new Error(
         `Environment validation failed:\n${missingVars.join('\n')}\n\nPlease check your ${envFile} file.`
       );

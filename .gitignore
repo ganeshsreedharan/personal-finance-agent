@@ -28,6 +28,7 @@ lerna-debug.log*
 .claude/plans/
 .claude/sessions/
 .claude/settings.local.json
+.agents/
 
 # IDE
 .vscode/

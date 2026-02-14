@@ -7,5 +7,4 @@
  */
 
 export * from './message.handler.js';
-export * from './photo.handler.js';
-export * from './document.handler.js';
+export * from './media.handler.js';

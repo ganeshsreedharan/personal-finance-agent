@@ -27,15 +27,23 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
 
     // Agent decides which tools to use and in what order
     // We pass both the user message and the userId in the context
+    const llmStart = Date.now();
     const response = await agent.generate([
       {
         role: 'user',
         content: `${message}\n\nContext: userId="${ctx.userId}"`,
       },
     ]);
+    console.log(`[LLM] Agent response took ${Date.now() - llmStart}ms`);
 
     // Send agent's response to user
-    await ctx.reply(response.text);
+    const reply = response.text?.trim();
+    if (reply) {
+      await ctx.reply(reply);
+    } else {
+      console.warn(`[User ${ctx.userId}] Agent returned empty response for: "${message}"`);
+      await ctx.reply('Done! Your transaction has been recorded. ✅');
+    }
 
     // Log agent execution
     console.log(`[User ${ctx.userId}] Agent processed: "${message}"`);

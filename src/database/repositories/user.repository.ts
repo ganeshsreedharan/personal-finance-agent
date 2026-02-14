@@ -1,33 +1,20 @@
 import { Collection, ObjectId } from 'mongodb';
 import { dbClient } from '../client.js';
-import type {
-  User,
-  CreateUserInput,
-  UpdateUserInput,
-  UserDocument,
-} from '../models/user.model.js';
-import { UserSchema, toUserDocument, fromUserDocument } from '../models/user.model.js';
+import { UserSchema, type User, type CreateUser, type UpdateUser } from '../schema.js';
 
-/**
- * User repository for database operations
- */
 export class UserRepository {
-  private get collection(): Collection<UserDocument> {
-    return dbClient.getDb().collection<UserDocument>('users');
+  private get collection(): Collection<User> {
+    return dbClient.getDb().collection<User>('users');
   }
 
-  /**
-   * Create a new user
-   */
-  async create(input: CreateUserInput): Promise<User> {
+  async create(input: CreateUser): Promise<User> {
     const user = UserSchema.parse({
       ...input,
       createdAt: new Date(),
       lastActive: new Date(),
     });
 
-    const document = toUserDocument(user);
-    const result = await this.collection.insertOne(document);
+    const result = await this.collection.insertOne(user);
 
     return {
       ...user,
@@ -35,36 +22,19 @@ export class UserRepository {
     };
   }
 
-  /**
-   * Find user by Telegram ID
-   */
   async findByTelegramId(telegramId: number): Promise<User | null> {
     const document = await this.collection.findOne({ telegramId });
-
-    if (!document) {
-      return null;
-    }
-
-    return fromUserDocument(document);
+    if (!document) return null;
+    return UserSchema.parse(document);
   }
 
-  /**
-   * Find user by ID
-   */
   async findById(id: string | ObjectId): Promise<User | null> {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
     const document = await this.collection.findOne({ _id: objectId });
-
-    if (!document) {
-      return null;
-    }
-
-    return fromUserDocument(document);
+    if (!document) return null;
+    return UserSchema.parse(document);
   }
 
-  /**
-   * Find or create user by Telegram data
-   */
   async findOrCreate(telegramUser: {
     id: number;
     first_name?: string;
@@ -74,12 +44,10 @@ export class UserRepository {
     const existingUser = await this.findByTelegramId(telegramUser.id);
 
     if (existingUser) {
-      // Update last active
       await this.updateLastActive(telegramUser.id);
       return existingUser;
     }
 
-    // Create new user
     return this.create({
       telegramId: telegramUser.id,
       firstName: telegramUser.first_name,
@@ -88,10 +56,7 @@ export class UserRepository {
     });
   }
 
-  /**
-   * Update user
-   */
-  async update(telegramId: number, input: UpdateUserInput): Promise<User | null> {
+  async update(telegramId: number, input: UpdateUser): Promise<User | null> {
     const result = await this.collection.findOneAndUpdate(
       { telegramId },
       {
@@ -103,28 +68,15 @@ export class UserRepository {
       { returnDocument: 'after' }
     );
 
-    if (!result) {
-      return null;
-    }
-
-    return fromUserDocument(result);
+    if (!result) return null;
+    return UserSchema.parse(result);
   }
 
-  /**
-   * Update last active timestamp
-   */
   async updateLastActive(telegramId: number): Promise<void> {
     await this.collection.updateOne({ telegramId }, { $set: { lastActive: new Date() } });
   }
 
-  /**
-   * Add vendor-category mapping
-   */
-  async addVendorCategoryMapping(
-    telegramId: number,
-    vendor: string,
-    category: string
-  ): Promise<void> {
+  async addVendorCategoryMapping(telegramId: number, vendor: string, category: string): Promise<void> {
     await this.collection.updateOne(
       { telegramId },
       {
@@ -136,55 +88,37 @@ export class UserRepository {
     );
   }
 
-  /**
-   * Add recurring bill
-   */
   async addRecurringBill(
     telegramId: number,
-    bill: {
-      vendor: string;
-      category: string;
-      expectedAmount: number;
-      expectedDay: number;
-    }
+    bill: { vendor: string; category: string; expectedAmount: number; expectedDay: number }
   ): Promise<void> {
     await this.collection.updateOne(
       { telegramId },
       {
-        $push: { recurringBills: bill },
+        $push: { recurringBills: bill } as never,
         $set: { lastActive: new Date() },
       }
     );
   }
 
-  /**
-   * Remove recurring bill
-   */
   async removeRecurringBill(telegramId: number, vendor: string): Promise<void> {
     await this.collection.updateOne(
       { telegramId },
       {
-        $pull: { recurringBills: { vendor } },
+        $pull: { recurringBills: { vendor } } as never,
         $set: { lastActive: new Date() },
       }
     );
   }
 
-  /**
-   * Delete user
-   */
   async delete(telegramId: number): Promise<boolean> {
     const result = await this.collection.deleteOne({ telegramId });
     return result.deletedCount > 0;
   }
 
-  /**
-   * Get total user count
-   */
   async count(): Promise<number> {
     return this.collection.countDocuments();
   }
 }
 
-// Export singleton instance
 export const userRepository = new UserRepository();

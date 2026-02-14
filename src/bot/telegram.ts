@@ -4,17 +4,29 @@ import { userRepository } from '../database/index.js';
 import { authMiddleware } from './middleware/index.js';
 
 /**
- * Extended context with user data
+ * Media file extracted by media middleware
  */
-export interface BotContext extends Context {
-  userId?: string;
+export interface MediaFile {
+  buffer: Buffer;
+  mimeType: string;
+  type: 'photo' | 'voice' | 'audio' | 'document';
+  fileName?: string;
 }
 
 /**
+ * Extended context with user data and media
+ */
+export interface BotContext extends Context {
+  userId?: string;
+  mediaFile?: MediaFile;
+}
+
+/** 
  * Create and configure Telegram bot
  */
 export const createBot = (): Bot<BotContext> => {
   const bot = new Bot<BotContext>(env.TELEGRAM_BOT_TOKEN);
+  
 
   // Middleware 1: Authorization (check if user is whitelisted)
   bot.use(authMiddleware);
@@ -25,6 +37,7 @@ export const createBot = (): Bot<BotContext> => {
       return;
     }
 
+    const start = Date.now();
     try {
       const user = await userRepository.findOrCreate({
         id: ctx.from.id,
@@ -38,6 +51,7 @@ export const createBot = (): Bot<BotContext> => {
     } catch (error) {
       console.error('Error in user middleware:', error);
     }
+    console.log(`[DB] User lookup took ${Date.now() - start}ms`);
 
     await next();
   });

@@ -49,12 +49,33 @@ export const FILE_LIMITS = {
 } as const;
 
 /**
- * Gemini AI configuration
+ * LLM Provider Configuration
+ */
+export const LLM_PROVIDER = {
+  // Choose: 'gemini' or 'ollama'
+  DEFAULT: (process.env.LLM_PROVIDER || 'gemini') as 'gemini' | 'ollama',
+} as const;
+
+/**
+ * Gemini AI configuration (Cloud)
  */
 export const GEMINI_CONFIG = {
   MODEL_NAME: 'gemini-flash-latest',
   REQUESTS_PER_MINUTE: 15,
   REQUESTS_PER_DAY: 1500,
+} as const;
+
+/**
+ * Ollama configuration (Local LLM)
+ */
+export const OLLAMA_CONFIG = {
+  BASE_URL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+  MODEL_NAME: process.env.OLLAMA_MODEL || 'qwen2.5:14b-instruct', // Your current model
+  // Recommended models:
+  // - qwen2.5:14b-instruct (excellent quality for finance)
+  // - qwen2.5:7b (good balance)
+  // - llama3.2:3b (fast, good for finance)
+  // - gemma2:2b (lightweight, 1.5GB RAM)
 } as const;
 
 /**

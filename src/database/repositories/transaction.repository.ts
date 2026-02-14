@@ -1,37 +1,26 @@
 import { Collection, ObjectId } from 'mongodb';
 import { dbClient } from '../client.js';
-import type {
-  Transaction,
-  CreateTransactionInput,
-  UpdateTransactionInput,
-  TransactionDocument,
-} from '../models/transaction.model.js';
-import {
-  TransactionSchema,
-  toTransactionDocument,
-  fromTransactionDocument,
-} from '../models/transaction.model.js';
+import { TransactionSchema, type Transaction, type CreateTransaction, type UpdateTransaction } from '../schema.js';
 
 /**
  * Transaction repository for database operations
  */
 export class TransactionRepository {
-  private get collection(): Collection<TransactionDocument> {
-    return dbClient.getDb().collection<TransactionDocument>('transactions');
+  private get collection(): Collection<Transaction> {
+    return dbClient.getDb().collection<Transaction>('transactions');
   }
 
   /**
    * Create a new transaction
    */
-  async create(input: CreateTransactionInput): Promise<Transaction> {
+  async create(input: CreateTransaction): Promise<Transaction> {
     const transaction = TransactionSchema.parse({
       ...input,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    const document = toTransactionDocument(transaction);
-    const result = await this.collection.insertOne(document);
+    const result = await this.collection.insertOne(transaction);
 
     return {
       ...transaction,
@@ -50,7 +39,7 @@ export class TransactionRepository {
       return null;
     }
 
-    return fromTransactionDocument(document);
+    return TransactionSchema.parse(document);
   }
 
   /**
@@ -79,7 +68,7 @@ export class TransactionRepository {
       .limit(limit)
       .toArray();
 
-    return documents.map(fromTransactionDocument);
+    return documents.map(doc => TransactionSchema.parse(doc));
   }
 
   /**
@@ -101,7 +90,7 @@ export class TransactionRepository {
       .sort({ date: -1 })
       .toArray();
 
-    return documents.map(fromTransactionDocument);
+    return documents.map(doc => TransactionSchema.parse(doc));
   }
 
   /**
@@ -113,7 +102,7 @@ export class TransactionRepository {
       .sort({ date: -1 })
       .toArray();
 
-    return documents.map(fromTransactionDocument);
+    return documents.map(doc => TransactionSchema.parse(doc));
   }
 
   /**
@@ -147,13 +136,13 @@ export class TransactionRepository {
       .sort({ date: -1 })
       .toArray();
 
-    return documents.map(fromTransactionDocument);
+    return documents.map(doc => TransactionSchema.parse(doc));
   }
 
   /**
    * Update transaction
    */
-  async update(id: string | ObjectId, input: UpdateTransactionInput): Promise<Transaction | null> {
+  async update(id: string | ObjectId, input: UpdateTransaction): Promise<Transaction | null> {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
 
     const result = await this.collection.findOneAndUpdate(
@@ -171,7 +160,7 @@ export class TransactionRepository {
       return null;
     }
 
-    return fromTransactionDocument(result);
+    return TransactionSchema.parse(result);
   }
 
   /**

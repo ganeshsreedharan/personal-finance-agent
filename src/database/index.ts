@@ -3,5 +3,5 @@
  */
 
 export * from './client.js';
-export * from './models/index.js';
+export * from './schema.js';
 export * from './repositories/index.js';

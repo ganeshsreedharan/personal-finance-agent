@@ -436,4 +436,77 @@ Track these to ensure pattern compliance:
 
 **Remember**: The agent is smart. Tools are dumb. Keep it that way.
 
-**Last Updated**: 2024-02-07 (Phase 2 - Core Agent Complete)
+---
+
+## 🏠 Local LLM Configuration (Ollama)
+
+### Proper Configuration Pattern for Local Models
+
+Both providers use direct AI SDK packages — NOT Mastra's model router strings.
+
+#### ❌ WRONG: Using Model Router Strings or OpenAI Shim
+
+```typescript
+// Mastra model router string — works but less control
+model: `google/${MODEL_NAME}`,
+
+// OpenAI shim for Ollama — broken, uses Responses API
+model: `openai/${MODEL_NAME}`,
+process.env.OPENAI_BASE_URL = 'http://localhost:11434/v1';
+```
+
+#### ✅ CORRECT: Using Direct AI SDK Providers
+
+```typescript
+import { google } from '@ai-sdk/google';
+import { createOllama } from 'ollama-ai-provider-v2';
+
+// Gemini (cloud)
+model: google('gemini-flash-latest')
+
+// Ollama (local)
+const ollama = createOllama({ baseURL: 'http://localhost:11434/api' });
+model: ollama('qwen2.5:14b-instruct')
+```
+
+**Why direct providers**:
+- Full control over provider configuration
+- Ollama uses native API (`/api`), not OpenAI compatibility layer
+- No environment variable hacks needed
+- Consistent pattern for both cloud and local
+
+### Implementation Example
+
+```typescript
+import { google } from '@ai-sdk/google';
+import { createOllama } from 'ollama-ai-provider-v2';
+
+const getModelConfig = () => {
+  if (LLM_PROVIDER.DEFAULT === 'ollama') {
+    const ollama = createOllama({ baseURL: `${OLLAMA_CONFIG.BASE_URL}/api` });
+    return ollama(OLLAMA_CONFIG.MODEL_NAME);
+  } else {
+    return google(GEMINI_CONFIG.MODEL_NAME);
+  }
+};
+
+export const financeAgent = new Agent({
+  model: getModelConfig(),
+  // ...
+});
+```
+
+### Key Points
+
+1. **Packages**: `@ai-sdk/google` (Gemini) + `ollama-ai-provider-v2` (Ollama)
+2. **Ollama Base URL**: Must end with `/api` (e.g., `http://localhost:11434/api`)
+3. **Zod v4**: Required by `ollama-ai-provider-v2` — all deps now on zod v4
+4. **No Environment Variables**: No `OPENAI_BASE_URL` or `OPENAI_API_KEY` needed
+
+### Reference
+
+See [Mastra Ollama Provider](https://mastra.ai/models/providers/ollama) and [Mastra Google Provider](https://mastra.ai/models/providers/google).
+
+---
+
+**Last Updated**: 2025-02-14 (Phase 2 - Direct AI SDK Providers + Zod v4)
