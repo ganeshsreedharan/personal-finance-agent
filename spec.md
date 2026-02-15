@@ -1,4 +1,4 @@
-# 🧾 Personal Finance Agent
+# Personal Finance Agent — Product Spec
 
 A personal AI agent for effortless expense, bill, and invoice tracking — focused on **awareness, not restriction**.
 
@@ -6,7 +6,7 @@ A personal AI agent for effortless expense, bill, and invoice tracking — focus
 
 ## 1. Purpose
 
-A personal AI agent that captures expenses, bills, and invoices in any format and produces **clear weekly and monthly financial summaries**, with minimal friction and **no budgeting pressure**.
+Capture expenses, bills, and invoices in any format and produce **clear spending summaries with visualizations**, with minimal friction and **no budgeting pressure**.
 
 **Primary goal:** Awareness, not restriction.
 
@@ -14,55 +14,55 @@ A personal AI agent that captures expenses, bills, and invoices in any format an
 
 ## 2. Inputs (What the User Sends)
 
-The agent must accept and log **any** of the following inputs.
-
 ### Text messages
-Examples:
 - `Rent 1250€ paid`
 - `Groceries 34.60 at REWE`
 - `Scalable Capital 300€ invested`
+- `Show me last 5 transactions`
+- `Delete the REWE one`
+- `Give me a summary of this month`
 
 ### Photos / Screenshots
 - Receipt photos
 - Bank app confirmations
 - Payment screenshots
 
-### PDF Invoices
-- Utilities
-- Internet
-- Insurance
-- Kita
-- Subscriptions
+### Voice messages
+- Spoken expense descriptions
 
-**Rule:**  
-Never reject input. If uncertain → **log first, clarify later**.
+### Documents / PDFs
+- Utility invoices, insurance, subscriptions
+
+**Rule:** Never reject input. If uncertain → **log with "Misc" category, clarify later**.
 
 ---
 
 ## 3. Core Data Object: Transaction
 
-Every input is normalized into a **Transaction** with:
+Every input is normalized into a **Transaction**:
 
-- Date (transaction or invoice date)
-- Amount + currency
-- Vendor / merchant
-- Category (see Section 4)
-- Recurring: `yes | no | unknown`
-- Notes (optional)
-- Attachment (optional)
-- Confidence score (internal)
+| Field | Type | Notes |
+|-------|------|-------|
+| date | Date | Transaction or invoice date |
+| amount | number | Always positive |
+| currency | EUR / USD / GBP | Default: EUR |
+| vendor | string | Merchant name (required) |
+| category | string | See Section 4 |
+| recurring | yes / no / unknown | Auto-detected |
+| notes | string? | Optional |
+| confidenceScore | 0.0–1.0 | Agent's certainty |
 
 ---
 
 ## 4. Category System (Locked v1)
 
 ### Structural / Recurring
-- Housing – Rent
-- Utilities – Electricity
-- Utilities – Internet
-- Childcare – Kita
+- Housing-Rent
+- Utilities-Electricity
+- Utilities-Internet
+- Childcare-Kita
 - Transport
-- Investments – Scalable Capital
+- Investments-Scalable Capital (excluded from spending totals)
 
 ### Daily Life
 - Groceries
@@ -71,41 +71,104 @@ Every input is normalized into a **Transaction** with:
 - Health
 - Shopping
 - Travel
-- Misc
+- Misc (default when uncertain)
 
 ### Categorization Rules
 - Home food → **Groceries**
-- Prepared food → **Eating Out**
+- Prepared food / restaurants → **Eating Out**
 - Repeating service → **Subscriptions**
 - Unclear → **Misc** (never block logging)
 
 ---
 
-## 5. Special Handling Rules
+## 5. Agent Capabilities
+
+### Log expenses
+1. Check for duplicates (same vendor, amount, ±7 days)
+2. If duplicate found → ask user to confirm
+3. If no duplicate → store transaction
+4. Reply: `Logged: €{amount} — {category} — {date} ✅`
+
+### Query transactions
+- Recent N transactions
+- By specific date or date range
+- Display as numbered list
+
+### Edit transactions
+- Find → confirm which one → update fields
+- Reply: `Updated: €{amount} — {category} — {date} ✏️`
+
+### Delete transactions
+- Find → confirm which one → delete
+- Reply: `Deleted: €{amount} — {vendor} — {date} 🗑️`
+
+### Spending summaries
+- Triggered via natural language ("show me a summary") or `/summary` command
+- Options: `week` (last 7 days) or `month` (current month)
+- Returns: text summary + pie chart (or bar chart with `/summary bar`)
+- Uses workflow: fetch data → agent generates report
+
+### Media processing
+- Photos: receipt/invoice extraction via agent vision
+- Voice: transcription + expense extraction
+- Documents/PDFs: invoice data extraction
+
+---
+
+## 6. Special Handling Rules
 
 ### Investments (Scalable Capital)
 - Tracked separately
 - Excluded from spending totals
-- Reported as **“Investments”** in summaries
+- Reported as "Investments" in summaries
 
 ### Recurring Bills
-- Rent, electricity, internet, and Kita are auto-flagged as recurring
-- Track:
-  - Usual amount (or range)
-  - Due-date window
-- Detect:
-  - Missing bills
-  - Abnormal increases
+- Rent, electricity, internet, Kita auto-flagged as `recurring: "yes"`
+- Subscriptions flagged as recurring
 
-### Transport
-- High-frequency, low-value transactions
-- Weekly summary shows **total + notable items**
-- No sub-splitting in v1
+### Duplicate Detection
+- ±5% amount tolerance
+- 7-day date window
+- Ask before storing if match found
 
 ---
 
-## 6. Agent Response Behavior
+## 7. Telegram Interface
 
-### On Every Input
-Respond with a **one-line confirmation**:
+### Commands
+| Command | Action |
+|---------|--------|
+| `/start` | Register user |
+| `/summary` | Current month summary + pie chart |
+| `/summary week` | Last 7 days summary |
+| `/summary bar` | Summary with bar chart |
 
+### Response Style
+- Concise, warm, occasional emojis
+- Always in English
+- One-line confirmations for logged expenses
+- Numbered lists for query results
+
+---
+
+## 8. Implementation Status
+
+### Implemented
+- Text expense logging with duplicate detection
+- Full CRUD (create, query, update, delete transactions)
+- Spending summary workflow with chart visualization (pie/bar)
+- Photo/voice/document processing via agent vision
+- Conversation memory (last 5 messages per user)
+- `/summary` command with period and chart type options
+- Structured logging (Mastra PinoLogger)
+- Retry logic for empty Ollama responses
+
+### Not Yet Implemented
+- Recurring bill tracking (detect missing bills, abnormal increases)
+- Budget alerts / spending insights
+- CSV/PDF export
+- Multi-currency conversion
+
+---
+
+**Last Updated**: 2026-02-16

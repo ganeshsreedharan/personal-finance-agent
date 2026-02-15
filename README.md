@@ -1,203 +1,177 @@
-# 🧾 Personal Finance AI Agent
+# Personal Finance AI Agent
 
-A TypeScript-based AI agent that tracks expenses, bills, and invoices via Telegram. Uses Gemini AI for vision-based receipt/invoice extraction with natural language understanding.
+A Telegram bot that tracks personal finances using AI. Send expenses as text, photos, voice messages, or documents — the bot extracts, categorizes, and stores transactions automatically.
 
-**Core Principle**: Never block logging. Capture first, clarify later.
+**Core Principle**: Never block logging. If uncertain, default to "Misc" category.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 20+
 - MongoDB (local or Atlas)
-- Telegram Bot Token
-- Google Gemini API Key
+- Telegram Bot Token (from @BotFather)
+- Google Gemini API Key (from [Google AI Studio](https://aistudio.google.com/app/apikey))
+- Optional: Ollama (for local LLM)
 
-### Installation
+### Setup
 
 ```bash
-# Install dependencies
 npm install
 
-# Copy environment template
 cp .env.example .env.development
+# Edit .env.development with your credentials:
+#   TELEGRAM_BOT_TOKEN=...
+#   GOOGLE_API_KEY=...
+#   MONGODB_URI=...
+#   LLM_PROVIDER=gemini  (or "ollama" for local)
 
-# Edit .env.development with your credentials
-# - TELEGRAM_BOT_TOKEN (from @BotFather)
-# - GOOGLE_API_KEY (from Google AI Studio)
-# - MONGODB_URI (local or Atlas)
-
-# Start MongoDB (if using Docker)
-docker run -d -p 27017:27017 --name finance-mongo mongo:latest
-
-# Run development server
 npm run dev
 ```
 
-### Test Your Bot
+### Test It
 
-1. Open Telegram
-2. Find your bot (username you created with BotFather)
-3. Send: `Rent 1250€ paid`
-4. Bot should respond: `Logged: €1250 — Housing-Rent — [date] ✅`
-
----
-
-## 📚 Documentation
-
-- **[claude.md](claude.md)** - Full project documentation for Claude Code
-- **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)** - Detailed implementation guide
-- **[spec.md](spec.md)** - Product specifications
-- **[prompt-contract.md](prompt-contract.md)** - Agent behavioral contract
+1. Open Telegram, find your bot
+2. Send: `Rent 1250€ paid`
+3. Bot replies: `Logged: €1250 — Housing-Rent — 2026-02-16 ✅`
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
-| Framework | Mastra (AI agent orchestration) |
+| Agent Framework | [Mastra](https://mastra.ai) (@mastra/core) |
+| Cloud LLM | Google Gemini via @ai-sdk/google |
+| Local LLM | Ollama via ollama-ai-provider-v2 |
 | Telegram Bot | grammY |
-| LLM | Google Gemini 1.5 Flash |
-| Database | MongoDB + GridFS |
-| Language | TypeScript |
-| Deployment | Railway |
+| Database | MongoDB |
+| Schema Validation | Zod |
+| Charts | chartjs-node-canvas |
+| Language | TypeScript (strict mode) |
 
 ---
 
-## 💰 Cost
+## What It Does
 
-**Personal Use (500 transactions/month)**:
-- Gemini API: FREE (within limits)
-- MongoDB Atlas: FREE (512MB tier)
-- Railway Hosting: $5/month
-- **Total: ~$5/month**
+### Log Expenses
+Send text, photos, voice, or documents. The agent extracts amount, vendor, category, and date.
 
----
-
-## 📖 Usage
-
-### Send Transactions
-
-**Text**:
 ```
-Rent 1250€ paid
 Groceries 34.60 at REWE
-Scalable Capital 300€ invested
+→ Logged: €34.60 — Groceries — 2026-02-16 ✅
 ```
 
-**Photo**:
-- Send receipt photo
-- Bot extracts amount, vendor, date
+### Query Transactions
+```
+Show me last 5 transactions
+What did I spend yesterday?
+```
 
-**PDF**:
-- Send invoice PDF
-- Bot extracts invoice details
+### Edit & Delete
+```
+Change the REWE amount to 40€
+Delete the last transaction
+```
 
-### Commands
+### Spending Summaries
+Natural language or `/summary` command. Returns text report + pie/bar chart.
 
 ```
-/start    - Welcome message
-/summary  - Current summary
-/weekly   - Last 7 days
-/monthly  - Current month
+How much did I spend this month?
+/summary week
+/summary bar
 ```
+
+### Media Processing
+- Photos: receipt/invoice extraction via agent vision
+- Voice: spoken expense extraction
+- Documents/PDFs: invoice data extraction
 
 ---
 
-## 🗂️ Categories
+## Commands
 
-### Structural/Recurring
-- Housing – Rent
-- Utilities – Electricity
-- Utilities – Internet
-- Childcare – Kita
-- Transport
-- Investments – Scalable Capital
-
-### Daily Life
-- Groceries
-- Eating Out
-- Subscriptions
-- Health
-- Shopping
-- Travel
-- Misc
+| Command | Action |
+|---------|--------|
+| `/start` | Register and get welcome message |
+| `/summary` | Current month summary + pie chart |
+| `/summary week` | Last 7 days summary |
+| `/summary bar` | Summary with bar chart |
 
 ---
 
-## 🧪 Development
+## Categories (v1)
 
-### Scripts
+**Structural**: Housing-Rent, Utilities-Electricity, Utilities-Internet, Childcare-Kita, Transport, Investments-Scalable Capital
 
-```bash
-npm run dev       # Start development server
-npm run build     # Build for production
-npm start         # Run production build
-npm test          # Run tests
-npm run lint      # Lint code
+**Daily**: Groceries, Eating Out, Subscriptions, Health, Shopping, Travel, Misc
+
+---
+
+## Architecture
+
+```
+User (Telegram) → grammY Bot → Mastra Agent (1 LLM call) → Tools (DB only) → MongoDB
 ```
 
-### Project Structure
+- **Agent does ALL reasoning** — parse, categorize, decide — in a single LLM call
+- **Tools are simple** — DB operations only, no LLM calls, <50 lines each
+- **6 tools**: store, query, update, delete, check-duplicates, spending-summary
+- **1 workflow**: spending summary (fetch data → agent generates report → chart)
+
+See [CONTEXT.md](CONTEXT.md) for detailed architecture docs.
+
+---
+
+## Project Structure
 
 ```
 src/
-├── bot/          # Telegram bot handlers
-├── mastra/       # AI agent, tools, workflows
-├── database/     # MongoDB models & repositories
-├── services/     # Gemini, file storage, scheduler
-└── utils/        # Helpers and formatters
+├── bot/              # Telegram bot
+│   ├── handlers/     # message, media, summary handlers
+│   └── middleware/    # auth, media processing
+├── mastra/           # AI agent layer
+│   ├── agents/       # Finance agent (instructions + model)
+│   ├── tools/        # 6 tools (DB operations only)
+│   └── workflows/    # Spending summary workflow
+├── database/         # MongoDB client, repositories, schemas
+├── config/           # Environment, categories, constants
+└── utils/            # Chart generation
 ```
 
 ---
 
-## 🚢 Deployment
-
-### Railway
+## Development
 
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Login and deploy
-railway login
-railway init
-railway up
+npm run dev          # Start with hot reload (tsx)
+npm run build        # Build for production
+npm run lint         # Check code style
 ```
 
-See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for detailed deployment instructions.
+### LLM Provider
+
+Switch between cloud and local LLM via `LLM_PROVIDER` in `.env.development`:
+
+- `gemini` — Google Gemini Flash (default, free tier: 15 req/min)
+- `ollama` — Local model via Ollama (e.g., qwen2.5:14b-instruct) — see [LOCAL_LLM_SETUP.md](LOCAL_LLM_SETUP.md)
 
 ---
 
-## 🧩 Features
+## Documentation
 
-- ✅ Natural language processing
-- ✅ Receipt photo OCR (Gemini Vision)
-- ✅ Native PDF invoice parsing
-- ✅ Automatic categorization
-- ✅ Duplicate detection
-- ✅ Weekly/monthly summaries
-- ✅ Recurring bill tracking
-- ✅ Investment tracking (separate from spending)
-- ✅ GridFS file storage
-- ✅ Automated summaries via cron
+| File | Purpose |
+|------|---------|
+| [CLAUDE.md](claude.md) | Project rules for Claude Code |
+| [CONTEXT.md](CONTEXT.md) | Architecture, patterns, guidelines |
+| [spec.md](spec.md) | Product specification |
+| [LOCAL_LLM_SETUP.md](LOCAL_LLM_SETUP.md) | Ollama setup guide |
 
 ---
 
-## 📝 License
+## License
 
 MIT
-
----
-
-## 🤝 Contributing
-
-This is a personal project, but suggestions are welcome via issues!
-
----
-
-## 📞 Support
-
-For issues or questions, see [claude.md](claude.md) for troubleshooting guide.
