@@ -95,6 +95,19 @@ class DatabaseClient {
     await attachmentsCollection.createIndex({ userId: 1, transactionId: 1 });
     await attachmentsCollection.createIndex({ gridFsId: 1 });
 
+    // Mastra memory TTL indexes — auto-delete old threads/messages after 90 days
+    // createIndex auto-creates the collection if it doesn't exist yet
+    const mastraDb = this.client!.db(env.MASTRA_DATABASE);
+
+    await mastraDb.collection('messages').createIndex(
+      { createdAt: 1 },
+      { expireAfterSeconds: 90 * 24 * 60 * 60 }
+    );
+    await mastraDb.collection('threads').createIndex(
+      { createdAt: 1 },
+      { expireAfterSeconds: 90 * 24 * 60 * 60 }
+    );
+
     console.log('Database indexes created successfully');
   }
 

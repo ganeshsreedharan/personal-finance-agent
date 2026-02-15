@@ -28,7 +28,23 @@ function extractToolReply(steps: Array<{ toolResults?: unknown[] }>): string | n
         return 'Transaction deleted 🗑️';
       }
       if (result.error) {
-        return `Something went wrong: ${result.error}`;
+        console.error(`[Handler] Tool error:`, result.error);
+
+        // Handle Zod validation errors (array of issues)
+        const errors = Array.isArray(result.error) ? result.error : null;
+        if (errors) {
+          const fields = errors.map((e: { path?: string[]; message?: string }) =>
+            `**${e.path?.join('.') || 'field'}**: ${e.message || 'invalid'}`
+          );
+          return `I'm missing some info:\n${fields.join('\n')}\nPlease provide the details and try again.`;
+        }
+
+        // Plain string error
+        if (typeof result.error === 'string') {
+          return `Something went wrong: ${result.error}`;
+        }
+
+        return 'Something went wrong while saving. Please try again with all details.';
       }
     }
   }
@@ -55,12 +71,12 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
     const agent = mastra.getAgent('financeAgent');
     const logger = mastra.getLogger();
 
+    const today = new Date().toISOString().split('T')[0];
+    const userContent = `${message}\n\nContext: userId="${ctx.userId}", today="${today}"`;
+
     const llmStart = Date.now();
     const response = await agent.generate([
-      {
-        role: 'user',
-        content: `${message}\n\nContext: userId="${ctx.userId}", today="${new Date().toISOString().split('T')[0]}"`,
-      },
+      { role: 'user', content: userContent },
     ], {
       maxSteps: 5,
       memory: {
@@ -68,7 +84,8 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
         resource: ctx.userId,
       },
     });
-    console.log(`[Handler] Agent responded in ${Date.now() - llmStart}ms`);
+    const elapsed = Date.now() - llmStart;
+    console.log(`[Handler] Agent responded in ${elapsed}ms`);
     console.log(`[Handler] Steps: ${response.steps?.length || 0}, text: "${response.text?.substring(0, 100) || '(empty)'}"`);
 
     let reply: string | null = response.text?.trim() || null;
@@ -78,6 +95,27 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
       reply = extractToolReply(response.steps as Array<{ toolResults?: unknown[] }>);
       if (reply) {
         console.log(`[Handler] Using fallback reply from tool results`);
+      }
+    }
+
+    // Retry once if model returned empty — include explicit instruction
+    if (!reply) {
+      console.log(`[Handler] Empty response, retrying with explicit prompt...`);
+      const retry = await agent.generate([
+        { role: 'user', content: `The user said: "${message}". Please respond helpfully based on conversation history.\n\nContext: userId="${ctx.userId}", today="${today}"` },
+      ], {
+        maxSteps: 5,
+        memory: {
+          thread: ctx.userId,
+          resource: ctx.userId,
+        },
+      });
+      reply = retry.text?.trim() || null;
+      if (!reply && retry.steps?.length) {
+        reply = extractToolReply(retry.steps as Array<{ toolResults?: unknown[] }>);
+      }
+      if (reply) {
+        console.log(`[Handler] Retry succeeded`);
       }
     }
 

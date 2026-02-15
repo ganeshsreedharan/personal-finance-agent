@@ -115,7 +115,7 @@ export const StoreTransactionInputSchema = ToolUserIdSchema.extend({
   date: z.string().describe('Transaction date in ISO format (YYYY-MM-DD)'),
   amount: z.number().positive().describe('Transaction amount'),
   currency: z.enum(SUPPORTED_CURRENCIES).describe('Currency code'),
-  vendor: z.string().describe('Vendor or merchant name'),
+  vendor: z.string().min(1, 'Vendor is required').describe('Vendor or merchant name'),
   category: z.string().describe('Transaction category'),
   recurring: z.enum(['yes', 'no', 'unknown']).describe('Recurring status'),
   notes: z.string().optional().describe('Additional notes'),

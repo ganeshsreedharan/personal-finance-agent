@@ -1,6 +1,4 @@
 import { Agent } from '@mastra/core/agent';
-import { Memory } from '@mastra/memory';
-import { MongoDBStore } from '@mastra/mongodb';
 import { google } from '@ai-sdk/google';
 import { createOllama } from 'ollama-ai-provider-v2';
 import { transactionStorageTool } from '../tools/transaction-storage.tool.js';
@@ -8,7 +6,8 @@ import { transactionQueryTool } from '../tools/transaction-query.tool.js';
 import { transactionUpdateTool } from '../tools/transaction-update.tool.js';
 import { transactionDeleteTool } from '../tools/transaction-delete.tool.js';
 import { transactionDuplicateCheckTool } from '../tools/transaction-duplicate-check.tool.js';
-import { env, GEMINI_CONFIG, OLLAMA_CONFIG, LLM_PROVIDER, CATEGORY_LIST } from '../../config/index.js';
+import { agentMemory } from '../memory.js';
+import { GEMINI_CONFIG, OLLAMA_CONFIG, LLM_PROVIDER, CATEGORY_LIST } from '../../config/index.js';
 
 /**
  * Determine which LLM to use based on environment variable.
@@ -87,16 +86,7 @@ IMPORTANT: Always confirm which transaction before editing or deleting if ambigu
     'check-duplicates': transactionDuplicateCheckTool,
   },
 
-  memory: new Memory({
-    options:{
-       lastMessages: 10,
-    },
-    storage: new MongoDBStore({
-      id: 'agent-memory-storage',
-      uri: env.MONGODB_URI,
-      dbName: env.MASTRA_DATABASE,
-    }),
-  }),
+  memory: agentMemory,
 
   defaultOptions: {
     maxSteps: 5,
