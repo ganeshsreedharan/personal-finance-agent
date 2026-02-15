@@ -28,6 +28,7 @@ const envSchema = z.object({
   // MongoDB
   MONGODB_URI: z.url('MongoDB URI must be a valid URL'),
   MONGODB_DATABASE: z.string().default('finance-agent'),
+  MASTRA_DATABASE: z.string().default('finance-agent-mastra'),
 
   // Storage
   STORAGE_TYPE: z.enum(['gridfs', 'local']).default('gridfs'),

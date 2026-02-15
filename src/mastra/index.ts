@@ -1,7 +1,3 @@
-/**
- * Mastra module exports
- */
-
-export * from './agents/index.js';
-export * from './tools/index.js';
-export * from './mastra.instance.js';
+export { mastra } from './mastra.instance.js';
+export { financeAgent } from './agents/index.js';
+export { transactionStorageTool } from './tools/index.js';

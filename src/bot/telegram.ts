@@ -1,6 +1,7 @@
 import { Bot, Context } from 'grammy';
 import { env } from '../config/index.js';
 import { userRepository } from '../database/index.js';
+import { mastra } from '../mastra/index.js';
 import { authMiddleware } from './middleware/index.js';
 
 /**
@@ -21,12 +22,12 @@ export interface BotContext extends Context {
   mediaFile?: MediaFile;
 }
 
-/** 
+/**
  * Create and configure Telegram bot
  */
 export const createBot = (): Bot<BotContext> => {
   const bot = new Bot<BotContext>(env.TELEGRAM_BOT_TOKEN);
-  
+  const logger = mastra.getLogger();
 
   // Middleware 1: Authorization (check if user is whitelisted)
   bot.use(authMiddleware);
@@ -46,19 +47,18 @@ export const createBot = (): Bot<BotContext> => {
         username: ctx.from.username,
       });
 
-      // Attach user ID to context
       ctx.userId = user._id?.toString();
     } catch (error) {
-      console.error('Error in user middleware:', error);
+      logger.error('Error in user middleware', { error });
     }
-    console.log(`[DB] User lookup took ${Date.now() - start}ms`);
+    logger.debug(`User lookup took ${Date.now() - start}ms`);
 
     await next();
   });
 
   // Error handler
   bot.catch(error => {
-    console.error('Bot error:', error);
+    logger.error('Bot error', { error });
   });
 
   return bot;
@@ -68,20 +68,18 @@ export const createBot = (): Bot<BotContext> => {
  * Start bot with graceful shutdown
  */
 export const startBot = async (bot: Bot<BotContext>): Promise<void> => {
-  // Get bot info
+  const logger = mastra.getLogger();
   const botInfo = await bot.api.getMe();
-  console.log(`Bot started: @${botInfo.username}`);
+  logger.info(`Bot started: @${botInfo.username}`);
 
-  // Start bot with long polling
   await bot.start({
     onStart: () => {
-      console.log('Bot is running and listening for messages...');
+      logger.info('Bot is running and listening for messages...');
     },
   });
 
-  // Graceful shutdown
   const shutdown = async () => {
-    console.log('Shutting down bot...');
+    logger.info('Shutting down bot...');
     await bot.stop();
     process.exit(0);
   };

@@ -7,3 +7,7 @@
  */
 
 export { transactionStorageTool } from './transaction-storage.tool.js';
+export { transactionQueryTool } from './transaction-query.tool.js';
+export { transactionUpdateTool } from './transaction-update.tool.js';
+export { transactionDeleteTool } from './transaction-delete.tool.js';
+export { transactionDuplicateCheckTool } from './transaction-duplicate-check.tool.js';

@@ -1,5 +1,5 @@
 import type { BotContext } from '../telegram.js';
-import { getFinanceAgent } from '../../mastra/index.js';
+import { mastra } from '../../mastra/index.js';
 
 /**
  * Handle all media messages (photos, voice, audio, documents).
@@ -12,7 +12,6 @@ export const handleMedia = async (ctx: BotContext): Promise<void> => {
   try {
     await ctx.replyWithChatAction('typing');
 
-    // Build the multimodal content part based on media type
     const filePart =
       media.type === 'photo'
         ? { type: 'image' as const, image: media.buffer }
@@ -25,7 +24,7 @@ export const handleMedia = async (ctx: BotContext): Promise<void> => {
       document: `Extract transaction details from this document (${media.fileName || 'unknown'}).`,
     };
 
-    const agent = getFinanceAgent();
+    const agent = mastra.getAgent('financeAgent');
     const result = await agent.generate([
       {
         role: 'user',
@@ -37,12 +36,18 @@ export const handleMedia = async (ctx: BotContext): Promise<void> => {
           },
         ],
       },
-    ]);
+    ], {
+      maxSteps: 5,
+      memory: {
+        thread: ctx.userId,
+        resource: ctx.userId,
+      },
+    });
 
     await ctx.reply(result.text);
-    console.log(`[User ${ctx.userId}] Agent processed ${media.type} (${media.mimeType})`);
+    mastra.getLogger().info(`Agent processed ${media.type}`, { userId: ctx.userId, mimeType: media.mimeType });
   } catch (error) {
-    console.error(`Error processing ${media.type}:`, error);
+    mastra.getLogger().error(`Error processing ${media.type}`, { error });
     await ctx.reply(
       `Sorry, I couldn't process this ${media.type}. The model may not support this input type.\n\n` +
         'Please send your transaction as text instead (e.g., "Groceries 45€ at REWE").'

@@ -1,65 +1,104 @@
 import { Agent } from '@mastra/core/agent';
+import { Memory } from '@mastra/memory';
+import { MongoDBStore } from '@mastra/mongodb';
 import { google } from '@ai-sdk/google';
 import { createOllama } from 'ollama-ai-provider-v2';
-import { transactionStorageTool } from '../tools/index.js';
-import { GEMINI_CONFIG, OLLAMA_CONFIG, LLM_PROVIDER, CATEGORY_LIST } from '../../config/index.js';
+import { transactionStorageTool } from '../tools/transaction-storage.tool.js';
+import { transactionQueryTool } from '../tools/transaction-query.tool.js';
+import { transactionUpdateTool } from '../tools/transaction-update.tool.js';
+import { transactionDeleteTool } from '../tools/transaction-delete.tool.js';
+import { transactionDuplicateCheckTool } from '../tools/transaction-duplicate-check.tool.js';
+import { env, GEMINI_CONFIG, OLLAMA_CONFIG, LLM_PROVIDER, CATEGORY_LIST } from '../../config/index.js';
 
 /**
- * Personal Finance AI Agent
+ * Determine which LLM to use based on environment variable.
  *
- * This agent uses its native LLM reasoning to:
- * 1. Parse transaction details from natural language
- * 2. Categorize transactions intelligently
- * 3. Call the store-transaction tool to save to MongoDB
- *
- * This is the proper agentic pattern: Agent does the thinking, tools do simple operations.
- *
- * Supports both (via direct AI SDK providers):
- * - Gemini (@ai-sdk/google) - cloud, ultra-cheap, fast
- * - Ollama (ollama-ai-provider) - local, private, offline
+ * - Gemini: direct AI SDK provider (@ai-sdk/google)
+ * - Ollama: direct AI SDK provider (ollama-ai-provider-v2)
  */
-
-// Determine which LLM to use based on environment variable
 const getModelConfig = () => {
   if (LLM_PROVIDER.DEFAULT === 'ollama') {
     console.log(`🏠 Using Local LLM: ${OLLAMA_CONFIG.MODEL_NAME} via Ollama (${OLLAMA_CONFIG.BASE_URL})`);
     const ollama = createOllama({ baseURL: `${OLLAMA_CONFIG.BASE_URL}/api` });
     return ollama(OLLAMA_CONFIG.MODEL_NAME);
-  } else {
-    console.log(`☁️ Using Cloud LLM: ${GEMINI_CONFIG.MODEL_NAME} via Google Gemini`);
-    return google(GEMINI_CONFIG.MODEL_NAME);
   }
+  console.log(`☁️ Using Cloud LLM: ${GEMINI_CONFIG.MODEL_NAME} via Google Gemini`);
+  return google(GEMINI_CONFIG.MODEL_NAME);
 };
 
 export const financeAgent = new Agent({
   id: 'finance-agent',
   name: 'Personal Finance Agent',
   instructions: `You are a friendly personal finance tracker bot. Be concise, warm, and use occasional emojis.
+You MUST ALWAYS respond in English. Never respond in Chinese, Thai, or any other language.
+Get userId from "Context: userId=..." in the message.
 
-For greetings/help: respond naturally. Do NOT call any tools.
+CRITICAL RULES:
+- You have NO knowledge of the user's transactions. You MUST call tools to access data.
+- NEVER make up or guess transaction data. Always call the appropriate tool first.
+- For greetings/help: respond naturally without calling tools.
+- For ANYTHING involving transactions: you MUST call a tool.
 
-For expenses: extract amount, vendor, category, and call the store-transaction tool. Get userId from "Context: userId=..." in the message.
+## Logging expenses
+When user mentions an expense, follow these steps:
+1. First call check-duplicates with the vendor, amount, and date.
+2. If duplicates found (hasDuplicates=true): show the existing transaction(s) and ask "This looks similar to an existing entry. Still want to log it?"
+3. If no duplicates (or user confirms): call store-transaction.
+- Extract: amount, vendor, category from the message.
 - Default currency: EUR. Detect from symbols (€/$/ £).
-- Default date: today (ISO format).
+- Default date: use the "today" value from Context (ISO format). NEVER guess the year.
 - If unsure about category, use "Misc".
 - Set recurring: "yes" for rent/utilities/subscriptions, "no" for groceries/eating out, "unknown" if unsure.
 - Set confidenceScore: 0.0-1.0 based on your certainty.
 
 Categories: ${CATEGORY_LIST.join(', ')}
 
-IMPORTANT — After the tool call succeeds, you MUST reply in this exact format:
-"Logged: €{amount} — {category} — {date} ✅ ({fun one-liner about the expense})"
-Example: "Logged: €1250 — Housing-Rent — 2026-02-14 ✅ (Rent paid! One less thing to worry about 🏠)"
-Never reply with just "stored" or "done". Always use the format above.`,
+After the tool returns success, reply: "Logged: €{amount} — {category} — {date} ✅ ({fun one-liner})"
+
+## Querying transactions
+When user asks about past expenses ("last transactions", "what did I spend yesterday", "show expenses"):
+You MUST call query-transactions tool. Do NOT respond without calling the tool first.
+- Use queryType "recent" for "last N" requests.
+- Use queryType "date" for specific day requests.
+- Use queryType "range" for date range requests.
+After the tool returns data, display as: "1. €{amount} — {vendor} — {category} — {date}"
+
+## Editing transactions
+When user wants to change a transaction:
+1. MUST call query-transactions first to find the transaction.
+2. Then call update-transaction with the transaction ID and new values.
+3. Reply: "Updated: €{amount} — {category} — {date} ✏️"
+
+## Deleting transactions
+When user wants to remove a transaction:
+1. MUST call query-transactions first to find the transaction.
+2. Then call delete-transaction with the transaction ID.
+3. Reply: "Deleted: €{amount} — {vendor} — {date} 🗑️"
+
+IMPORTANT: Always confirm which transaction before editing or deleting if ambiguous.`,
 
   model: getModelConfig(),
 
   tools: {
     'store-transaction': transactionStorageTool,
+    'query-transactions': transactionQueryTool,
+    'update-transaction': transactionUpdateTool,
+    'delete-transaction': transactionDeleteTool,
+    'check-duplicates': transactionDuplicateCheckTool,
   },
 
-  // Allow up to 3 tool calls (store + potential retries)
+  memory: new Memory({
+    options:{
+       lastMessages: 10,
+    },
+    storage: new MongoDBStore({
+      id: 'agent-memory-storage',
+      uri: env.MONGODB_URI,
+      dbName: env.MASTRA_DATABASE,
+    }),
+  }),
+
   defaultOptions: {
-    maxSteps: 3,
+    maxSteps: 5,
   },
 });

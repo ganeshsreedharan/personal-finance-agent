@@ -1,19 +1,28 @@
-import { Mastra } from '@mastra/core';
-import { financeAgent } from './agents/index.js';
+import { Mastra } from '@mastra/core/mastra';
+import { PinoLogger } from '@mastra/loggers';
+import { MongoDBStore } from '@mastra/mongodb';
+import { Observability, DefaultExporter, SensitiveDataFilter } from '@mastra/observability';
+import { financeAgent } from './agents/finance.agent.js';
+import { env } from '../config/index.js';
 
-/**
- * Mastra instance
- * Registers agents and provides access to them throughout the application
- */
 export const mastra = new Mastra({
-  agents: {
-    financeAgent,
-  },
+  agents: { financeAgent },
+  storage: new MongoDBStore({
+    id: 'mastra-storage',
+    uri: env.MONGODB_URI,
+    dbName: env.MASTRA_DATABASE,
+  }),
+  logger: new PinoLogger({
+    name: 'Mastra',
+    level: 'info',
+  }),
+  observability: new Observability({
+    configs: {
+      default: {
+        serviceName: 'personal-finance-agent',
+        exporters: [new DefaultExporter()],
+        spanOutputProcessors: [new SensitiveDataFilter()],
+      },
+    },
+  }),
 });
-
-/**
- * Get the finance agent instance
- * Use this instead of importing financeAgent directly to get access to
- * Mastra's configuration (logger, telemetry, storage, etc.)
- */
-export const getFinanceAgent = () => mastra.getAgent('financeAgent');

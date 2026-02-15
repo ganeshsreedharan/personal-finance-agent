@@ -1,28 +1,22 @@
-/**
- * Personal Finance AI Agent - Entry Point
- * Phase 2: Core Agent - Full agentic pattern
- */
-
 import { createBot, startBot, handleTextMessage, handleMedia, mediaMiddleware } from './bot/index.js';
 import { dbClient } from './database/index.js';
 import { env } from './config/index.js';
+import { mastra } from './mastra/index.js';
 
-/**
- * Initialize and start the application
- */
 const main = async (): Promise<void> => {
+  const logger = mastra.getLogger();
+
   try {
-    console.log('🚀 Starting Personal Finance AI Agent...');
-    console.log(`Environment: ${env.NODE_ENV}`);
-    console.log(`Log Level: ${env.LOG_LEVEL}`);
+    logger.info('Starting Personal Finance AI Agent...');
+    logger.info(`Environment: ${env.NODE_ENV}`);
 
     // Connect to MongoDB
-    console.log('📦 Connecting to MongoDB...');
+    logger.info('Connecting to MongoDB...');
     await dbClient.connect();
-    console.log('✅ MongoDB connected');
+    logger.info('MongoDB connected');
 
     // Create bot instance
-    console.log('🤖 Initializing Telegram bot...');
+    logger.info('Initializing Telegram bot...');
     const bot = createBot();
 
     // Media middleware: provider check + file download for all media types
@@ -38,7 +32,7 @@ const main = async (): Promise<void> => {
     // Start bot
     await startBot(bot);
   } catch (error) {
-    console.error('❌ Failed to start application:', error);
+    logger.error('Failed to start application', { error });
     process.exit(1);
   }
 };
@@ -53,5 +47,4 @@ process.on('uncaughtException', error => {
   process.exit(1);
 });
 
-// Start application
 main();
