@@ -1,6 +1,8 @@
 import type { BotContext } from '../telegram.js';
 import { mastra } from '../../mastra/index.js';
 
+const logger = mastra.getLogger();
+
 /**
  * Handle all media messages (photos, voice, audio, documents).
  * Expects ctx.mediaFile to be populated by media middleware.
@@ -45,9 +47,9 @@ export const handleMedia = async (ctx: BotContext): Promise<void> => {
     });
 
     await ctx.reply(result.text);
-    mastra.getLogger().info(`Agent processed ${media.type}`, { userId: ctx.userId, mimeType: media.mimeType });
+    logger.info(`Agent processed ${media.type}`, { userId: ctx.userId, mimeType: media.mimeType });
   } catch (error) {
-    mastra.getLogger().error(`Error processing ${media.type}`, { error });
+    logger.error(`Error processing ${media.type}`, { error });
     await ctx.reply(
       `Sorry, I couldn't process this ${media.type}. The model may not support this input type.\n\n` +
         'Please send your transaction as text instead (e.g., "Groceries 45€ at REWE").'

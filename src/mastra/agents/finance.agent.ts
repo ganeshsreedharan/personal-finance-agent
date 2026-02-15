@@ -6,6 +6,7 @@ import { transactionQueryTool } from '../tools/transaction-query.tool.js';
 import { transactionUpdateTool } from '../tools/transaction-update.tool.js';
 import { transactionDeleteTool } from '../tools/transaction-delete.tool.js';
 import { transactionDuplicateCheckTool } from '../tools/transaction-duplicate-check.tool.js';
+import { spendingSummaryTool } from '../tools/spending-summary.tool.js';
 import { agentMemory } from '../memory.js';
 import { GEMINI_CONFIG, OLLAMA_CONFIG, LLM_PROVIDER, CATEGORY_LIST } from '../../config/index.js';
 
@@ -74,6 +75,12 @@ When user wants to remove a transaction:
 2. Then call delete-transaction with the transaction ID.
 3. Reply: "Deleted: €{amount} — {vendor} — {date} 🗑️"
 
+## Spending summary / report
+When user asks for a summary, report, overview, or breakdown of spending:
+1. Call spending-summary with the userId and period ("week" or "month").
+2. The tool returns a formatted summary. Display it as-is — do NOT rewrite or summarize it further.
+3. A chart image will be automatically sent alongside your text reply.
+
 IMPORTANT: Always confirm which transaction before editing or deleting if ambiguous.`,
 
   model: getModelConfig(),
@@ -84,6 +91,7 @@ IMPORTANT: Always confirm which transaction before editing or deleting if ambigu
     'update-transaction': transactionUpdateTool,
     'delete-transaction': transactionDeleteTool,
     'check-duplicates': transactionDuplicateCheckTool,
+    'spending-summary': spendingSummaryTool,
   },
 
   memory: agentMemory,

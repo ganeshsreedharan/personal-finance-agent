@@ -1,4 +1,4 @@
-import { createBot, startBot, handleTextMessage, handleMedia, mediaMiddleware } from './bot/index.js';
+import { createBot, startBot, handleTextMessage, handleMedia, handleSummary, mediaMiddleware } from './bot/index.js';
 import { dbClient } from './database/index.js';
 import { env } from './config/index.js';
 import { mastra } from './mastra/index.js';
@@ -21,6 +21,9 @@ const main = async (): Promise<void> => {
 
     // Media middleware: provider check + file download for all media types
     bot.use(mediaMiddleware);
+
+    // Register command handlers
+    bot.command('summary', handleSummary);
 
     // Register message handlers - Agent handles EVERYTHING
     bot.on('message:text', handleTextMessage);

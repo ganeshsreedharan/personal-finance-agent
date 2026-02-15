@@ -1,5 +1,9 @@
+import { InputFile } from 'grammy';
 import type { BotContext } from '../telegram.js';
 import { mastra } from '../../mastra/index.js';
+import { generatePieChart } from '../../utils/chart.js';
+
+const logger = mastra.getLogger();
 
 /**
  * Extract a fallback reply from tool results when the LLM doesn't generate text.
@@ -28,7 +32,7 @@ function extractToolReply(steps: Array<{ toolResults?: unknown[] }>): string | n
         return 'Transaction deleted 🗑️';
       }
       if (result.error) {
-        console.error(`[Handler] Tool error:`, result.error);
+        logger.error('Tool error', { error: result.error });
 
         // Handle Zod validation errors (array of issues)
         const errors = Array.isArray(result.error) ? result.error : null;
@@ -51,25 +55,47 @@ function extractToolReply(steps: Array<{ toolResults?: unknown[] }>): string | n
   return null;
 }
 
+interface SummaryChartData {
+  periodLabel: string;
+  categoryBreakdown: Array<{ category: string; total: number; count: number }>;
+}
+
+/**
+ * Extract summary chart data from tool results (if spending-summary was called).
+ */
+function extractSummaryChartData(steps: Array<{ toolResults?: unknown[] }>): SummaryChartData | null {
+  for (const step of steps) {
+    if (!step.toolResults) continue;
+    for (const tr of step.toolResults as Array<{ payload?: { toolName?: string; result?: Record<string, unknown> } }>) {
+      const { toolName, result } = tr.payload || {};
+      if (toolName === 'spending-summary' && result?.success && result?.categoryBreakdown) {
+        return {
+          periodLabel: result.periodLabel as string,
+          categoryBreakdown: result.categoryBreakdown as SummaryChartData['categoryBreakdown'],
+        };
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Handle text messages
  * The agent parses, categorizes, and stores transactions via tools.
  */
 export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
   const message = ctx.message?.text;
-  console.log(`[Handler] Received text message: "${message}" from userId: ${ctx.userId}`);
+  logger.debug('Received text message', { message, userId: ctx.userId });
 
   if (!message || !ctx.userId) {
-    console.log(`[Handler] Skipping — missing message or userId`);
+    logger.debug('Skipping — missing message or userId');
     return;
   }
 
   try {
     await ctx.replyWithChatAction('typing');
-    console.log(`[Handler] Calling agent.generate()...`);
 
     const agent = mastra.getAgent('financeAgent');
-    const logger = mastra.getLogger();
 
     const today = new Date().toISOString().split('T')[0];
     const userContent = `${message}\n\nContext: userId="${ctx.userId}", today="${today}"`;
@@ -85,8 +111,12 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
       },
     });
     const elapsed = Date.now() - llmStart;
-    console.log(`[Handler] Agent responded in ${elapsed}ms`);
-    console.log(`[Handler] Steps: ${response.steps?.length || 0}, text: "${response.text?.substring(0, 100) || '(empty)'}"`);
+    logger.info('Agent responded', {
+      userId: ctx.userId,
+      elapsed,
+      steps: response.steps?.length || 0,
+      text: response.text?.substring(0, 100) || '(empty)',
+    });
 
     let reply: string | null = response.text?.trim() || null;
 
@@ -94,13 +124,13 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
     if (!reply && response.steps?.length) {
       reply = extractToolReply(response.steps as Array<{ toolResults?: unknown[] }>);
       if (reply) {
-        console.log(`[Handler] Using fallback reply from tool results`);
+        logger.debug('Using fallback reply from tool results');
       }
     }
 
     // Retry once if model returned empty — include explicit instruction
     if (!reply) {
-      console.log(`[Handler] Empty response, retrying with explicit prompt...`);
+      logger.warn('Empty response, retrying with explicit prompt', { userId: ctx.userId, message });
       const retry = await agent.generate([
         { role: 'user', content: `The user said: "${message}". Please respond helpfully based on conversation history.\n\nContext: userId="${ctx.userId}", today="${today}"` },
       ], {
@@ -115,24 +145,31 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
         reply = extractToolReply(retry.steps as Array<{ toolResults?: unknown[] }>);
       }
       if (reply) {
-        console.log(`[Handler] Retry succeeded`);
+        logger.debug('Retry succeeded');
       }
     }
 
     if (reply) {
       await ctx.reply(reply);
+
+      // If a spending summary was generated, send a chart image
+      const allSteps = [...(response.steps || [])];
+      const chartData = extractSummaryChartData(allSteps as Array<{ toolResults?: unknown[] }>);
+      if (chartData && chartData.categoryBreakdown.length > 0) {
+        try {
+          await ctx.replyWithChatAction('upload_photo');
+          const chartBuffer = await generatePieChart(chartData.categoryBreakdown, chartData.periodLabel);
+          await ctx.replyWithPhoto(new InputFile(chartBuffer, 'spending-summary.png'));
+        } catch (chartErr) {
+          logger.error('Chart generation failed', { error: chartErr });
+        }
+      }
     } else {
-      logger.warn(`Agent returned empty response`, { userId: ctx.userId, message });
+      logger.warn('Agent returned empty response', { userId: ctx.userId, message });
       await ctx.reply('Hmm, I couldn\'t process that. Could you try again?');
     }
-
-    logger.info(`Agent processed message`, {
-      userId: ctx.userId,
-      message,
-      steps: response.steps?.length || 0,
-    });
   } catch (error) {
-    console.error(`[Handler] ERROR:`, error);
+    logger.error('Message handler error', { error, userId: ctx.userId });
     await ctx.reply('Sorry, something went wrong processing your transaction. Please try again.');
   }
 };

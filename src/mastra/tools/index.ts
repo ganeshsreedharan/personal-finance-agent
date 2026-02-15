@@ -11,3 +11,4 @@ export { transactionQueryTool } from './transaction-query.tool.js';
 export { transactionUpdateTool } from './transaction-update.tool.js';
 export { transactionDeleteTool } from './transaction-delete.tool.js';
 export { transactionDuplicateCheckTool } from './transaction-duplicate-check.tool.js';
+export { spendingSummaryTool } from './spending-summary.tool.js';

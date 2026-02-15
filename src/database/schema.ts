@@ -190,3 +190,21 @@ export const CheckDuplicatesOutputSchema = z.object({
   duplicates: z.array(TransactionResultSchema),
   count: z.number(),
 });
+
+// ── Spending Summary ──
+
+export const SpendingSummaryInputSchema = ToolUserIdSchema.extend({
+  period: z.enum(['week', 'month']).describe('Summary period: "week" for last 7 days, "month" for current month'),
+});
+
+export const SpendingSummaryOutputSchema = z.object({
+  success: z.boolean(),
+  summary: z.string().optional().describe('Human-friendly spending summary'),
+  periodLabel: z.string().optional(),
+  categoryBreakdown: z.array(z.object({
+    category: z.string(),
+    total: z.number(),
+    count: z.number(),
+  })).optional(),
+  error: z.string().optional(),
+});

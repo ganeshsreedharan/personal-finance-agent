@@ -8,3 +8,4 @@
 
 export * from './message.handler.js';
 export * from './media.handler.js';
+export * from './summary.handler.js';
