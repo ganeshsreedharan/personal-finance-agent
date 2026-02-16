@@ -112,7 +112,7 @@ export const serializeTransaction = (t: Transaction) => ({
 // ── Store Transaction ──
 
 export const StoreTransactionInputSchema = ToolUserIdSchema.extend({
-  date: z.string().describe('Transaction date in ISO format (YYYY-MM-DD)'),
+  date: z.string().optional().describe('Transaction date in ISO format (YYYY-MM-DD). Defaults to today if omitted.'),
   amount: z.number().positive().describe('Transaction amount'),
   currency: z.enum(SUPPORTED_CURRENCIES).describe('Currency code'),
   vendor: z.string().min(1, 'Vendor is required').describe('Vendor or merchant name'),

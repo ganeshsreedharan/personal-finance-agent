@@ -13,9 +13,11 @@ export const transactionStorageTool = createTool({
     'Stores a transaction in the database. Takes transaction details (userId, date, amount, currency, vendor, category, recurring status, notes, confidence score) and saves it to MongoDB. Returns success status and transaction ID.',
   inputSchema: StoreTransactionInputSchema,
   outputSchema: StoreTransactionOutputSchema,
-  execute: async (input) => {
+  execute: async (input, { mastra }) => {
+    const logger = mastra?.getLogger();
     try {
-      const { userId, date, amount, currency, vendor, category, recurring, notes, confidenceScore } = input;
+      const { userId, amount, currency, vendor, category, recurring, notes, confidenceScore } = input;
+      const date = input.date || new Date().toISOString().split('T')[0];
 
       const validRecurring =
         recurring === RECURRING_STATUS.YES ||
@@ -43,7 +45,7 @@ export const transactionStorageTool = createTool({
         transactionId: transaction._id?.toString(),
       };
     } catch (error) {
-      console.error('Transaction storage error:', error);
+      logger?.error('Transaction storage error', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

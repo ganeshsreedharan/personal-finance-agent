@@ -1,34 +1,35 @@
 import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 import type { ChartConfiguration } from 'chart.js';
 
-const WIDTH = 600;
-const HEIGHT = 400;
+const WIDTH = 700;
+const HEIGHT = 450;
 
 const chartCanvas = new ChartJSNodeCanvas({
   width: WIDTH,
   height: HEIGHT,
-  backgroundColour: '#ffffff',
+  backgroundColour: '#1e1e2e',
 });
 
-/** Category → colour mapping for consistent visuals */
+/** Modern color palette — vibrant on dark background */
 const CATEGORY_COLORS: Record<string, string> = {
-  'Food & Dining': '#FF6384',
-  'Groceries': '#36A2EB',
-  'Transport': '#FFCE56',
-  'Travel': '#4BC0C0',
-  'Shopping': '#9966FF',
-  'Entertainment': '#FF9F40',
-  'Housing': '#C9CBCF',
-  'Utilities': '#7BC8A4',
-  'Health': '#E7E9ED',
-  'Education': '#8B5CF6',
-  'Subscriptions': '#F97316',
-  'Misc': '#94A3B8',
+  'Housing-Rent': '#f38ba8',
+  'Utilities-Electricity': '#fab387',
+  'Utilities-Internet': '#f9e2af',
+  'Childcare-Kita': '#a6e3a1',
+  'Transport': '#94e2d5',
+  'Investments-Scalable Capital': '#89b4fa',
+  'Groceries': '#74c7ec',
+  'Eating Out': '#f38ba8',
+  'Subscriptions': '#cba6f7',
+  'Health': '#f2cdcd',
+  'Shopping': '#eba0ac',
+  'Travel': '#89dceb',
+  'Misc': '#9399b2',
 };
 
 const DEFAULT_COLORS = [
-  '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-  '#FF9F40', '#C9CBCF', '#7BC8A4', '#E7E9ED', '#8B5CF6',
+  '#f38ba8', '#fab387', '#f9e2af', '#a6e3a1', '#94e2d5',
+  '#89b4fa', '#74c7ec', '#cba6f7', '#f2cdcd', '#eba0ac',
 ];
 
 interface CategoryData {
@@ -37,43 +38,56 @@ interface CategoryData {
   count: number;
 }
 
+function getColor(label: string, index: number): string {
+  return CATEGORY_COLORS[label] || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+}
+
 /**
- * Generate a pie chart showing spending breakdown by category.
+ * Generate a doughnut chart showing spending breakdown by category.
  * Returns a PNG buffer.
  */
 export async function generatePieChart(
   categories: CategoryData[],
   periodLabel: string,
 ): Promise<Buffer> {
-  const labels = categories.map(c => c.category);
-  const data = categories.map(c => Math.round(c.total * 100) / 100);
-  const colors = labels.map(
-    (label, i) => CATEGORY_COLORS[label] || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
-  );
+  const sorted = [...categories].sort((a, b) => b.total - a.total);
+  const labels = sorted.map(c => `${c.category}  €${c.total.toFixed(0)}`);
+  const data = sorted.map(c => Math.round(c.total * 100) / 100);
+  const colors = sorted.map((c, i) => getColor(c.category, i));
+  const total = data.reduce((sum, v) => sum + v, 0);
 
-  const config: ChartConfiguration = {
-    type: 'pie',
+  const config: ChartConfiguration<'doughnut'> = {
+    type: 'doughnut',
     data: {
       labels,
       datasets: [{
         data,
         backgroundColor: colors,
-        borderWidth: 2,
-        borderColor: '#ffffff',
+        borderWidth: 3,
+        borderColor: '#1e1e2e',
+        hoverOffset: 8,
       }],
     },
     options: {
       responsive: false,
+      cutout: '55%',
       plugins: {
         title: {
           display: true,
-          text: `Spending Breakdown — ${periodLabel}`,
+          text: [`Spending Breakdown`, `${periodLabel}  •  €${total.toFixed(2)} total`],
           font: { size: 16, weight: 'bold' },
-          padding: { bottom: 10 },
+          color: '#cdd6f4',
+          padding: { bottom: 16 },
         },
         legend: {
           position: 'right',
-          labels: { font: { size: 12 }, padding: 8 },
+          labels: {
+            font: { size: 12 },
+            padding: 12,
+            color: '#bac2de',
+            usePointStyle: true,
+            pointStyleWidth: 12,
+          },
         },
       },
     },
@@ -83,18 +97,18 @@ export async function generatePieChart(
 }
 
 /**
- * Generate a bar chart showing spending by category.
+ * Generate a horizontal bar chart showing spending by category.
  * Returns a PNG buffer.
  */
 export async function generateBarChart(
   categories: CategoryData[],
   periodLabel: string,
 ): Promise<Buffer> {
-  const labels = categories.map(c => c.category);
-  const data = categories.map(c => Math.round(c.total * 100) / 100);
-  const colors = labels.map(
-    (label, i) => CATEGORY_COLORS[label] || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
-  );
+  const sorted = [...categories].sort((a, b) => b.total - a.total);
+  const labels = sorted.map(c => c.category);
+  const data = sorted.map(c => Math.round(c.total * 100) / 100);
+  const colors = sorted.map((c, i) => getColor(c.category, i));
+  const total = data.reduce((sum, v) => sum + v, 0);
 
   const config: ChartConfiguration = {
     type: 'bar',
@@ -104,8 +118,9 @@ export async function generateBarChart(
         label: 'Spending (€)',
         data,
         backgroundColor: colors,
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderWidth: 0,
+        borderRadius: 6,
+        borderSkipped: false,
       }],
     },
     options: {
@@ -114,20 +129,30 @@ export async function generateBarChart(
       plugins: {
         title: {
           display: true,
-          text: `Spending by Category — ${periodLabel}`,
+          text: [`Spending by Category`, `${periodLabel}  •  €${total.toFixed(2)} total`],
           font: { size: 16, weight: 'bold' },
-          padding: { bottom: 10 },
+          color: '#cdd6f4',
+          padding: { bottom: 16 },
         },
         legend: { display: false },
       },
       scales: {
         x: {
-          ticks: { callback: (val) => `€${val}` },
-          grid: { color: '#f1f5f9' },
+          ticks: {
+            callback: (val) => `€${val}`,
+            color: '#a6adc8',
+            font: { size: 11 },
+          },
+          grid: { color: '#313244' },
+          border: { color: '#45475a' },
         },
         y: {
-          ticks: { font: { size: 12 } },
+          ticks: {
+            font: { size: 12 },
+            color: '#cdd6f4',
+          },
           grid: { display: false },
+          border: { display: false },
         },
       },
     },

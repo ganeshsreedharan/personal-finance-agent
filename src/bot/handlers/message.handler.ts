@@ -80,6 +80,17 @@ function extractSummaryChartData(steps: Array<{ toolResults?: unknown[] }>): Sum
 }
 
 /**
+ * Clean up Ollama responses that leak raw JSON tool call arguments.
+ * Strips ```json ... ``` blocks that look like tool parameters.
+ */
+function cleanResponse(text: string): string {
+  // Remove ```json blocks containing tool-like objects (userId, amount, vendor, etc.)
+  const cleaned = text.replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/g, '').trim();
+  // Remove trailing "```" or "``" left over from incomplete code blocks
+  return cleaned.replace(/`{2,3}\s*$/, '').trim();
+}
+
+/**
  * Handle text messages
  * The agent parses, categorizes, and stores transactions via tools.
  */
@@ -118,7 +129,7 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
       text: response.text?.substring(0, 100) || '(empty)',
     });
 
-    let reply: string | null = response.text?.trim() || null;
+    let reply: string | null = response.text ? cleanResponse(response.text) || null : null;
 
     // Fallback: some Ollama models stop after tool calls without generating text
     if (!reply && response.steps?.length) {
@@ -140,7 +151,7 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
           resource: ctx.userId,
         },
       });
-      reply = retry.text?.trim() || null;
+      reply = retry.text ? cleanResponse(retry.text) || null : null;
       if (!reply && retry.steps?.length) {
         reply = extractToolReply(retry.steps as Array<{ toolResults?: unknown[] }>);
       }
