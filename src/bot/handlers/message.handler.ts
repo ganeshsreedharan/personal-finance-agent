@@ -2,6 +2,7 @@ import { InputFile } from 'grammy';
 import type { BotContext } from '../telegram.js';
 import { mastra } from '../../mastra/index.js';
 import { generatePieChart } from '../../utils/chart.js';
+import { toTelegramMarkdown } from '../../utils/telegram-format.js';
 
 const logger = mastra.getLogger();
 
@@ -161,7 +162,7 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
     }
 
     if (reply) {
-      await ctx.reply(reply);
+      await ctx.reply(toTelegramMarkdown(reply), { parse_mode: 'MarkdownV2' });
 
       // If a spending summary was generated, send a chart image
       const allSteps = [...(response.steps || [])];

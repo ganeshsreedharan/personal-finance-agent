@@ -17,7 +17,11 @@ export const transactionStorageTool = createTool({
     const logger = mastra?.getLogger();
     try {
       const { userId, amount, currency, vendor, category, recurring, notes, confidenceScore } = input;
-      const date = input.date || new Date().toISOString().split('T')[0];
+      const dateStr = input.date || new Date().toISOString().split('T')[0];
+      // Parse as local noon to avoid timezone boundary issues
+      // "2026-02-16" → 2026-02-16T12:00:00 local time (not midnight UTC)
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day, 12, 0, 0);
 
       const validRecurring =
         recurring === RECURRING_STATUS.YES ||

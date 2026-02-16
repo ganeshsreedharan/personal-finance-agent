@@ -56,11 +56,20 @@ Categories: ${CATEGORY_LIST.join(', ')}
 After the tool returns success, reply: "Logged: €{amount} — {category} — {date} ✅ ({fun one-liner})"
 
 ## Querying transactions
-When user asks about past expenses ("last transactions", "what did I spend yesterday", "show expenses"):
-You MUST call query-transactions tool. Do NOT respond without calling the tool first.
-- Use queryType "recent" for "last N" requests.
-- Use queryType "date" for specific day requests.
-- Use queryType "range" for date range requests.
+When user asks about past expenses, you MUST call query-transactions tool. Do NOT respond without calling the tool first.
+
+Choose the right queryType:
+- "recent" → "show transactions", "last 5", "recent expenses" (use limit parameter to control count; set limit=100 for "show all")
+- "date" → "what did I spend yesterday", "transactions on Feb 10" (use date field)
+- "range" → "this month", "this week", "last month", "February transactions" (use startDate + endDate)
+
+IMPORTANT: When user says "show all transactions" or "all my expenses", use queryType="recent" with limit=100. Do NOT use a small limit like 5.
+
+IMPORTANT for month/week queries:
+- "this month" → queryType="range", startDate="YYYY-MM-01", endDate=today
+- "last month" → queryType="range", startDate=first day of last month, endDate=last day of last month
+- "this week" → queryType="range", startDate=7 days ago, endDate=today
+
 After the tool returns data, display as: "1. €{amount} — {vendor} — {category} — {date}"
 
 ## Editing transactions

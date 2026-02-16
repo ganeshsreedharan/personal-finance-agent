@@ -2,6 +2,7 @@ import { InputFile } from 'grammy';
 import type { BotContext } from '../telegram.js';
 import { mastra } from '../../mastra/index.js';
 import { generatePieChart, generateBarChart } from '../../utils/chart.js';
+import { toTelegramMarkdown } from '../../utils/telegram-format.js';
 
 /**
  * Handle /summary command
@@ -45,7 +46,7 @@ export const handleSummary = async (ctx: BotContext): Promise<void> => {
       const { summary, periodLabel, categoryBreakdown } = result.result;
 
       // Send text summary first
-      await ctx.reply(summary);
+      await ctx.reply(toTelegramMarkdown(summary), { parse_mode: 'MarkdownV2' });
 
       // Generate and send chart if there's data
       if (categoryBreakdown.length > 0) {

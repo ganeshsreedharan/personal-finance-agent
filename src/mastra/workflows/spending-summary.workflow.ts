@@ -52,6 +52,8 @@ const fetchTransactionData = createStep({
     const totalSpent = categoryBreakdown.reduce((sum, c) => sum + c.total, 0);
     const transactionCount = transactions.length;
 
+    console.log(`[Summary] Period: ${periodLabel}, Range: ${start.toISOString()} → ${end.toISOString()}, Found: ${transactionCount} transactions, Categories: ${categoryBreakdown.length}`);
+
     // Top 5 largest transactions
     const topTransactions = transactions
       .sort((a, b) => b.amount - a.amount)
@@ -110,19 +112,19 @@ const generateSummary = createStep({
 
 Period: ${periodLabel}
 Total spent: €${totalSpent.toFixed(2)}
-Transactions: ${transactionCount}
+Total transactions: ${transactionCount}
 
-Category breakdown:
+Category breakdown (ALL categories, covers all ${transactionCount} transactions):
 ${categoryLines}
 
-Top expenses:
+Top 5 biggest single expenses (out of ${transactionCount} total):
 ${topLines}
 
 Format as:
 📊 Spending Summary — {period}
-💰 Total: €{amount} across {count} transactions
-📋 By category (largest first)
-🔝 Biggest expenses
+💰 Total: €{total} across {total transaction count} transactions
+📋 By category (largest first, list ALL categories)
+🔝 Top 5 biggest expenses
 💡 One brief tip based on the spending pattern`;
 
     const agent = mastra.getAgent('financeAgent');

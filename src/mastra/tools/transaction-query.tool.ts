@@ -2,6 +2,12 @@ import { createTool } from '@mastra/core/tools';
 import { transactionRepository } from '../../database/index.js';
 import { QueryTransactionInputSchema, QueryTransactionOutputSchema, serializeTransaction } from '../../database/schema.js';
 
+/** Parse "YYYY-MM-DD" as local date (avoids UTC midnight timezone issues) */
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 /**
  * Transaction Query Tool
  * Fetches transactions by date range, recent count, or specific date.
@@ -19,8 +25,9 @@ export const transactionQueryTool = createTool({
 
       switch (queryType) {
         case 'recent':
+          // Enforce minimum of 20 — some models pass limit:5 regardless of instructions
           transactions = await transactionRepository.findByUserId(userId, {
-            limit: limit || 5,
+            limit: Math.max(limit || 20, 20),
             sortBy: 'date',
             sortOrder: 'desc',
           });
@@ -30,10 +37,9 @@ export const transactionQueryTool = createTool({
           if (!date) {
             return { success: false, transactions: [], count: 0, error: 'date is required for "date" query type' };
           }
-          const targetDate = new Date(date);
-          const dayStart = new Date(targetDate);
+          const dayStart = parseLocalDate(date);
           dayStart.setHours(0, 0, 0, 0);
-          const dayEnd = new Date(targetDate);
+          const dayEnd = parseLocalDate(date);
           dayEnd.setHours(23, 59, 59, 999);
           transactions = await transactionRepository.findByDateRange(userId, dayStart, dayEnd);
           break;
@@ -43,9 +49,9 @@ export const transactionQueryTool = createTool({
           if (!startDate || !endDate) {
             return { success: false, transactions: [], count: 0, error: 'startDate and endDate are required for "range" query type' };
           }
-          const rangeStart = new Date(startDate);
+          const rangeStart = parseLocalDate(startDate);
           rangeStart.setHours(0, 0, 0, 0);
-          const rangeEnd = new Date(endDate);
+          const rangeEnd = parseLocalDate(endDate);
           rangeEnd.setHours(23, 59, 59, 999);
           transactions = await transactionRepository.findByDateRange(userId, rangeStart, rangeEnd);
           break;
@@ -58,7 +64,6 @@ export const transactionQueryTool = createTool({
         count: transactions.length,
       };
     } catch (error) {
-      console.error('Transaction query error:', error);
       return {
         success: false,
         transactions: [],

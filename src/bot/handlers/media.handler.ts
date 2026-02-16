@@ -1,5 +1,6 @@
 import type { BotContext } from '../telegram.js';
 import { mastra } from '../../mastra/index.js';
+import { toTelegramMarkdown } from '../../utils/telegram-format.js';
 
 const logger = mastra.getLogger();
 
@@ -46,7 +47,7 @@ export const handleMedia = async (ctx: BotContext): Promise<void> => {
       },
     });
 
-    await ctx.reply(result.text);
+    await ctx.reply(toTelegramMarkdown(result.text), { parse_mode: 'MarkdownV2' });
     logger.info(`Agent processed ${media.type}`, { userId: ctx.userId, mimeType: media.mimeType });
   } catch (error) {
     logger.error(`Error processing ${media.type}`, { error });

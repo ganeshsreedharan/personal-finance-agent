@@ -134,7 +134,7 @@ export const QueryTransactionInputSchema = ToolUserIdSchema.extend({
   queryType: z.enum(['recent', 'date', 'range']).describe(
     'Query type: "recent" for last N transactions, "date" for a specific day, "range" for a date range'
   ),
-  limit: z.number().optional().default(5).describe('Number of recent transactions to fetch (for "recent" type)'),
+  limit: z.number().optional().default(100).describe('Max transactions to return for "recent" query type. Use a high number (100+) when user wants "all" transactions. Ignored for "date" and "range" (those return all matches).'),
   date: z.string().optional().describe('Specific date in ISO format YYYY-MM-DD (for "date" type)'),
   startDate: z.string().optional().describe('Start date in ISO format YYYY-MM-DD (for "range" type)'),
   endDate: z.string().optional().describe('End date in ISO format YYYY-MM-DD (for "range" type)'),
