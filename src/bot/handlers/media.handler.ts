@@ -28,6 +28,7 @@ export const handleMedia = async (ctx: BotContext): Promise<void> => {
     };
 
     const agent = mastra.getAgent('financeAgent');
+    const today = new Date().toISOString().split('T')[0];
     const result = await agent.generate([
       {
         role: 'user',
@@ -35,19 +36,19 @@ export const handleMedia = async (ctx: BotContext): Promise<void> => {
           filePart,
           {
             type: 'text',
-            text: `${prompts[media.type]}\n\nContext: userId="${ctx.userId}"`,
+            text: `${prompts[media.type]}\n\nContext: userId="${ctx.userId}", today="${today}"`,
           },
         ],
       },
     ], {
-      maxSteps: 5,
       memory: {
         thread: ctx.userId,
         resource: ctx.userId,
       },
     });
 
-    await ctx.reply(toTelegramMarkdown(result.text), { parse_mode: 'MarkdownV2' });
+    const replyText = result.text || 'Processed but no details could be extracted. Try sending as text instead.';
+    await ctx.reply(toTelegramMarkdown(replyText), { parse_mode: 'MarkdownV2' });
     logger.info(`Agent processed ${media.type}`, { userId: ctx.userId, mimeType: media.mimeType });
   } catch (error) {
     logger.error(`Error processing ${media.type}`, { error });

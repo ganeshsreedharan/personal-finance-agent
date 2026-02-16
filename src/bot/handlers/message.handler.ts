@@ -116,7 +116,6 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
     const response = await agent.generate([
       { role: 'user', content: userContent },
     ], {
-      maxSteps: 5,
       memory: {
         thread: ctx.userId,
         resource: ctx.userId,
@@ -132,11 +131,20 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
 
     let reply: string | null = response.text ? cleanResponse(response.text) || null : null;
 
-    // Fallback: some Ollama models stop after tool calls without generating text
-    if (!reply && response.steps?.length) {
-      reply = extractToolReply(response.steps as Array<{ toolResults?: unknown[] }>);
-      if (reply) {
-        logger.debug('Using fallback reply from tool results');
+    // Fallback: some Ollama models generate a placeholder ("I'm checking...") alongside
+    // the tool call but never format the actual results. If tools were called, check if
+    // extractToolReply has more useful content than the LLM's text.
+    if (response.steps?.length) {
+      const toolReply = extractToolReply(response.steps as Array<{ toolResults?: unknown[] }>);
+      if (toolReply) {
+        if (!reply) {
+          reply = toolReply;
+          logger.debug('Using fallback reply from tool results (empty LLM text)');
+        } else if (reply.length < 120 && !reply.includes('€') && !reply.match(/\d+\.\s/)) {
+          // LLM text is short and doesn't contain transaction data — prefer tool reply
+          reply = toolReply;
+          logger.debug('Using fallback reply from tool results (LLM text was placeholder)');
+        }
       }
     }
 
@@ -146,7 +154,7 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
       const retry = await agent.generate([
         { role: 'user', content: `The user said: "${message}". Please respond helpfully based on conversation history.\n\nContext: userId="${ctx.userId}", today="${today}"` },
       ], {
-        maxSteps: 5,
+        maxSteps: 1,
         memory: {
           thread: ctx.userId,
           resource: ctx.userId,

@@ -87,7 +87,7 @@ export class TransactionRepository {
           $lte: endDate,
         },
       })
-      .sort({ date: -1 })
+      .sort({ date: -1, createdAt: -1 })
       .toArray();
 
     return documents.map(doc => TransactionSchema.parse(doc));

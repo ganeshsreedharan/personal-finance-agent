@@ -18,11 +18,9 @@ import { GEMINI_CONFIG, OLLAMA_CONFIG, LLM_PROVIDER, CATEGORY_LIST } from '../..
  */
 const getModelConfig = () => {
   if (LLM_PROVIDER.DEFAULT === 'ollama') {
-    console.log(`🏠 Using Local LLM: ${OLLAMA_CONFIG.MODEL_NAME} via Ollama (${OLLAMA_CONFIG.BASE_URL})`);
     const ollama = createOllama({ baseURL: `${OLLAMA_CONFIG.BASE_URL}/api` });
     return ollama(OLLAMA_CONFIG.MODEL_NAME);
   }
-  console.log(`☁️ Using Cloud LLM: ${GEMINI_CONFIG.MODEL_NAME} via Google Gemini`);
   return google(GEMINI_CONFIG.MODEL_NAME);
 };
 
@@ -59,16 +57,17 @@ After the tool returns success, reply: "Logged: €{amount} — {category} — {
 When user asks about past expenses, you MUST call query-transactions tool. Do NOT respond without calling the tool first.
 
 Choose the right queryType:
-- "recent" → "show transactions", "last 5", "recent expenses" (use limit parameter to control count; set limit=100 for "show all")
-- "date" → "what did I spend yesterday", "transactions on Feb 10" (use date field)
-- "range" → "this month", "this week", "last month", "February transactions" (use startDate + endDate)
+- "recent" → "show transactions", "last 5", "recent expenses", "show all" (use limit parameter; set limit=100 for "show all")
+- "date" → ONLY for a single specific day like "what did I spend yesterday", "transactions on Feb 10" (use date field)
+- "range" → ANY multi-day period: "last 2 days", "last 3 days", "this month", "this week", "last month" (use startDate + endDate)
 
-IMPORTANT: When user says "show all transactions" or "all my expenses", use queryType="recent" with limit=100. Do NOT use a small limit like 5.
+IMPORTANT: "last N days" ALWAYS uses queryType="range", NOT "date". Example: "last 2 days" → startDate=2 days ago, endDate=today.
 
-IMPORTANT for month/week queries:
-- "this month" → queryType="range", startDate="YYYY-MM-01", endDate=today
-- "last month" → queryType="range", startDate=first day of last month, endDate=last day of last month
-- "this week" → queryType="range", startDate=7 days ago, endDate=today
+Date range examples:
+- "this month" → startDate="YYYY-MM-01", endDate=today
+- "last month" → startDate=first day of last month, endDate=last day of last month
+- "this week" → startDate=7 days ago, endDate=today
+- "last 2 days" → startDate=2 days ago, endDate=today
 
 After the tool returns data, display as: "1. €{amount} — {vendor} — {category} — {date}"
 
@@ -88,7 +87,6 @@ When user wants to remove a transaction:
 When user asks for a summary, report, overview, or breakdown of spending:
 1. Call spending-summary with the userId and period ("week" or "month").
 2. The tool returns a formatted summary. Display it as-is — do NOT rewrite or summarize it further.
-3. A chart image will be automatically sent alongside your text reply.
 
 IMPORTANT: Always confirm which transaction before editing or deleting if ambiguous.`,
 
@@ -106,6 +104,6 @@ IMPORTANT: Always confirm which transaction before editing or deleting if ambigu
   memory: agentMemory,
 
   defaultOptions: {
-    maxSteps: 5,
+    maxSteps: 3,
   },
 });

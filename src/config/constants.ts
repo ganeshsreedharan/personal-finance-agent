@@ -77,12 +77,3 @@ export const OLLAMA_CONFIG = {
   // - llama3.2:3b (fast, good for finance)
   // - gemma2:2b (lightweight, 1.5GB RAM)
 } as const;
-
-/**
- * Rate limiting
- * @deprecated Use GEMINI_CONFIG instead
- */
-export const RATE_LIMITS = {
-  GEMINI_REQUESTS_PER_MINUTE: 15,
-  GEMINI_REQUESTS_PER_DAY: 1500,
-} as const;

@@ -39,7 +39,7 @@ export const spendingSummaryTool = createTool({
         error: result.status === 'failed' ? 'Workflow failed' : `Unexpected status: ${result.status}`,
       };
     } catch (error) {
-      console.error('Spending summary tool error:', error);
+      mastra?.getLogger()?.error('Spending summary tool error', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

@@ -48,12 +48,12 @@ export const createBot = (): Bot<BotContext> => {
       });
 
       ctx.userId = user._id?.toString();
+      logger.debug(`User lookup took ${Date.now() - start}ms`);
+      await next();
     } catch (error) {
       logger.error('Error in user middleware', { error });
+      await ctx.reply('Sorry, something went wrong. Please try again.');
     }
-    logger.debug(`User lookup took ${Date.now() - start}ms`);
-
-    await next();
   });
 
   // Error handler

@@ -52,8 +52,6 @@ const fetchTransactionData = createStep({
     const totalSpent = categoryBreakdown.reduce((sum, c) => sum + c.total, 0);
     const transactionCount = transactions.length;
 
-    console.log(`[Summary] Period: ${periodLabel}, Range: ${start.toISOString()} → ${end.toISOString()}, Found: ${transactionCount} transactions, Categories: ${categoryBreakdown.length}`);
-
     // Top 5 largest transactions
     const topTransactions = transactions
       .sort((a, b) => b.amount - a.amount)
@@ -79,17 +77,16 @@ const fetchTransactionData = createStep({
 });
 
 /**
- * Step 2: Generate a human-friendly summary using the finance agent
+ * Step 2: Format summary as human-friendly text
  *
- * Takes the raw data from step 1, formats a prompt, and lets the agent
- * produce a natural-language spending report.
+ * Deterministic template — no LLM call needed since data is fully structured.
  */
-const generateSummary = createStep({
-  id: 'generate-summary',
-  description: 'Use the finance agent to generate a human-friendly spending summary',
+const formatSummary = createStep({
+  id: 'format-summary',
+  description: 'Format aggregated spending data into a human-friendly summary',
   inputSchema: GenerateSummaryInputSchema,
   outputSchema: GenerateSummaryOutputSchema,
-  execute: async ({ inputData, mastra }) => {
+  execute: async ({ inputData }) => {
     const { periodLabel, totalSpent, transactionCount, categoryBreakdown, topTransactions } = inputData;
 
     if (transactionCount === 0) {
@@ -101,37 +98,25 @@ const generateSummary = createStep({
     }
 
     const categoryLines = categoryBreakdown
-      .map(c => `- ${c.category}: €${c.total.toFixed(2)} (${c.count} txns)`)
+      .map(c => `• ${c.category}: €${c.total.toFixed(2)} (${c.count} txns)`)
       .join('\n');
 
     const topLines = topTransactions
-      .map(t => `- €${t.amount} at ${t.vendor} (${t.category}, ${t.date})`)
+      .map((t, i) => `${i + 1}. €${t.amount} at ${t.vendor} (${t.category}, ${t.date})`)
       .join('\n');
 
-    const prompt = `Generate a concise, friendly spending summary report. Use emojis and keep it under 15 lines.
+    const summary = `📊 Spending Summary — ${periodLabel}
 
-Period: ${periodLabel}
-Total spent: €${totalSpent.toFixed(2)}
-Total transactions: ${transactionCount}
+💰 Total: €${totalSpent.toFixed(2)} across ${transactionCount} transactions
 
-Category breakdown (ALL categories, covers all ${transactionCount} transactions):
+📋 By Category:
 ${categoryLines}
 
-Top 5 biggest single expenses (out of ${transactionCount} total):
-${topLines}
-
-Format as:
-📊 Spending Summary — {period}
-💰 Total: €{total} across {total transaction count} transactions
-📋 By category (largest first, list ALL categories)
-🔝 Top 5 biggest expenses
-💡 One brief tip based on the spending pattern`;
-
-    const agent = mastra.getAgent('financeAgent');
-    const response = await agent.generate(prompt);
+🔝 Top Expenses:
+${topLines}`;
 
     return {
-      summary: response.text || `📊 ${periodLabel}: €${totalSpent.toFixed(2)} across ${transactionCount} transactions`,
+      summary,
       periodLabel,
       categoryBreakdown,
     };
@@ -142,7 +127,7 @@ Format as:
  * Spending Summary Workflow
  *
  * Step 1: fetchTransactionData — queries DB, aggregates by category
- * Step 2: generateSummary — agent produces a natural-language report
+ * Step 2: formatSummary — deterministic template (no LLM call)
  */
 export const spendingSummaryWorkflow = createWorkflow({
   id: 'spending-summary',
@@ -150,5 +135,5 @@ export const spendingSummaryWorkflow = createWorkflow({
   outputSchema: SpendingSummaryOutputSchema,
 })
   .then(fetchTransactionData)
-  .then(generateSummary)
+  .then(formatSummary)
   .commit();

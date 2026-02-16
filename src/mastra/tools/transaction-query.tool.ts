@@ -25,10 +25,9 @@ export const transactionQueryTool = createTool({
 
       switch (queryType) {
         case 'recent':
-          // Enforce minimum of 20 — some models pass limit:5 regardless of instructions
           transactions = await transactionRepository.findByUserId(userId, {
-            limit: Math.max(limit || 20, 20),
-            sortBy: 'date',
+            limit: limit || 100,
+            sortBy: 'createdAt',
             sortOrder: 'desc',
           });
           break;
