@@ -4,7 +4,7 @@
   <img src="assets/banner.png" alt="Finance Bot" width="400" />
 </p>
 
-A Telegram bot that tracks personal finances using AI. Send expenses as text, photos, voice messages, or documents — the bot extracts, categorizes, and stores transactions automatically. Get spending summaries with pie/bar chart visualizations.
+A Telegram bot powered by [Mastra](https://mastra.ai) that tracks personal finances using AI. Send expenses as text, photos, voice messages, or documents — the bot extracts, categorizes, and stores transactions automatically. Built-in duplicate detection prevents double entries. Get spending summaries with pie/bar chart visualizations.
 
 ---
 
@@ -53,41 +53,37 @@ npm run dev
 
 ---
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="assets/chat-logging.png" alt="Expense Logging" width="280" /><br />
+      <b>Conversational Logging</b><br />
+      <sub>Natural language expense tracking with auto-categorization</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/duplicate-detection.png" alt="Duplicate Detection" width="280" /><br />
+      <b>Duplicate Detection</b><br />
+      <sub>Catches potential duplicates before saving</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/spending-summary.png" alt="Spending Summary" width="280" /><br />
+      <b>Spending Summary</b><br />
+      <sub>Category breakdown with pie chart visualization</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## What It Does
 
-### Log Expenses
-Send text, photos, voice, or documents. The agent extracts amount, vendor, category, and date.
-
-```
-Groceries 34.60 at REWE
-→ Logged: €34.60 — Groceries — 2026-02-21 ✅
-```
-
-### Query Transactions
-```
-Show me last 5 transactions
-What did I spend yesterday?
-```
-
-### Edit & Delete
-```
-Change the REWE amount to 40€
-Delete the last transaction
-```
-
-### Spending Summaries
-Natural language or `/summary` command. Returns text report + pie/bar chart.
-
-```
-How much did I spend this month?
-/summary week
-/summary bar
-```
-
-### Media Processing
-- Photos: receipt/invoice extraction via agent vision
-- Voice: spoken expense extraction
-- Documents/PDFs: invoice data extraction
+- **Log expenses** — send text, photos, voice, or documents. The agent extracts amount, vendor, category, and date
+- **Query transactions** — "Show me last 5 transactions", "What did I spend yesterday?"
+- **Edit & delete** — "Change the REWE amount to 40€", "Delete the last transaction"
+- **Spending summaries** — natural language or `/summary` command with pie/bar charts
+- **Media processing** — receipt photos, voice messages, PDF invoices
 
 ---
 

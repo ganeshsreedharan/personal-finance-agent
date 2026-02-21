@@ -12,24 +12,25 @@ const chartCanvas = new ChartJSNodeCanvas({
 
 /** Modern color palette — vibrant on dark background */
 const CATEGORY_COLORS: Record<string, string> = {
-  'Housing-Rent': '#f38ba8',
-  'Utilities-Electricity': '#fab387',
-  'Utilities-Internet': '#f9e2af',
-  'Childcare-Kita': '#a6e3a1',
-  'Transport': '#94e2d5',
-  'Investments-Scalable Capital': '#89b4fa',
-  'Groceries': '#74c7ec',
-  'Eating Out': '#f38ba8',
-  'Subscriptions': '#cba6f7',
-  'Health': '#f2cdcd',
-  'Shopping': '#eba0ac',
-  'Travel': '#89dceb',
-  'Misc': '#9399b2',
+  'housing-rent': '#f38ba8',
+  'utilities-electricity': '#fab387',
+  'utilities-internet': '#f9e2af',
+  'childcare-kita': '#a6e3a1',
+  'transport': '#94e2d5',
+  'investments-scalable capital': '#89b4fa',
+  'groceries': '#74c7ec',
+  'eating out': '#b4befe',
+  'subscriptions': '#cba6f7',
+  'health': '#f2cdcd',
+  'shopping': '#eba0ac',
+  'travel': '#89dceb',
+  'misc': '#9399b2',
 };
 
 const DEFAULT_COLORS = [
   '#f38ba8', '#fab387', '#f9e2af', '#a6e3a1', '#94e2d5',
   '#89b4fa', '#74c7ec', '#cba6f7', '#f2cdcd', '#eba0ac',
+  '#b4befe', '#89dceb', '#9399b2',
 ];
 
 interface CategoryData {
@@ -39,7 +40,8 @@ interface CategoryData {
 }
 
 function getColor(label: string, index: number): string {
-  return CATEGORY_COLORS[label] || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+  const key = label.toLowerCase().trim();
+  return CATEGORY_COLORS[key] || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
 }
 
 /**
