@@ -1,8 +1,10 @@
 # Personal Finance AI Agent
 
-A Telegram bot that tracks personal finances using AI. Send expenses as text, photos, voice messages, or documents — the bot extracts, categorizes, and stores transactions automatically.
+<p align="center">
+  <img src="assets/banner.png" alt="Finance Bot" width="400" />
+</p>
 
-**Core Principle**: Never block logging. If uncertain, default to "Misc" category.
+A Telegram bot that tracks personal finances using AI. Send expenses as text, photos, voice messages, or documents — the bot extracts, categorizes, and stores transactions automatically. Get spending summaries with pie/bar chart visualizations.
 
 ---
 
@@ -14,7 +16,6 @@ A Telegram bot that tracks personal finances using AI. Send expenses as text, ph
 - MongoDB (local or Atlas)
 - Telegram Bot Token (from @BotFather)
 - Google Gemini API Key (from [Google AI Studio](https://aistudio.google.com/app/apikey))
-- Optional: Ollama (for local LLM)
 
 ### Setup
 
@@ -24,9 +25,8 @@ npm install
 cp .env.example .env.development
 # Edit .env.development with your credentials:
 #   TELEGRAM_BOT_TOKEN=...
-#   GOOGLE_API_KEY=...
+#   GOOGLE_GENERATIVE_AI_API_KEY=...
 #   MONGODB_URI=...
-#   LLM_PROVIDER=gemini  (or "ollama" for local)
 
 npm run dev
 ```
@@ -35,7 +35,7 @@ npm run dev
 
 1. Open Telegram, find your bot
 2. Send: `Rent 1250€ paid`
-3. Bot replies: `Logged: €1250 — Housing-Rent — 2026-02-16 ✅`
+3. Bot replies: `Logged: €1250 — Housing-Rent — 2026-02-21 ✅`
 
 ---
 
@@ -44,10 +44,9 @@ npm run dev
 | Component | Technology |
 |-----------|-----------|
 | Agent Framework | [Mastra](https://mastra.ai) (@mastra/core) |
-| Cloud LLM | Google Gemini via @ai-sdk/google |
-| Local LLM | Ollama via ollama-ai-provider-v2 |
+| LLM | Google Gemini Flash via @ai-sdk/google |
 | Telegram Bot | grammY |
-| Database | MongoDB |
+| Database | MongoDB + GridFS |
 | Schema Validation | Zod |
 | Charts | chartjs-node-canvas |
 | Language | TypeScript (strict mode) |
@@ -61,7 +60,7 @@ Send text, photos, voice, or documents. The agent extracts amount, vendor, categ
 
 ```
 Groceries 34.60 at REWE
-→ Logged: €34.60 — Groceries — 2026-02-16 ✅
+→ Logged: €34.60 — Groceries — 2026-02-21 ✅
 ```
 
 ### Query Transactions
@@ -96,7 +95,6 @@ How much did I spend this month?
 
 | Command | Action |
 |---------|--------|
-| `/start` | Register and get welcome message |
 | `/summary` | Current month summary + pie chart |
 | `/summary week` | Last 7 days summary |
 | `/summary bar` | Summary with bar chart |
@@ -115,11 +113,13 @@ How much did I spend this month?
 
 ```
 User (Telegram) → grammY Bot → Mastra Agent (1 LLM call) → Tools (DB only) → MongoDB
+                                      ↕
+                                Memory (MongoDB)
 ```
 
 - **Agent does ALL reasoning** — parse, categorize, decide — in a single LLM call
 - **Tools are simple** — DB operations only, no LLM calls, <50 lines each
-- **6 tools**: store, query, update, delete, check-duplicates, spending-summary
+- **5 tools**: store (with built-in duplicate check), query, update, delete, spending-summary
 - **1 workflow**: spending summary (fetch data → agent generates report → chart)
 
 See [CONTEXT.md](CONTEXT.md) for detailed architecture docs.
@@ -135,7 +135,7 @@ src/
 │   └── middleware/    # auth, media processing
 ├── mastra/           # AI agent layer
 │   ├── agents/       # Finance agent (instructions + model)
-│   ├── tools/        # 6 tools (DB operations only)
+│   ├── tools/        # 5 tools (DB operations only)
 │   └── workflows/    # Spending summary workflow
 ├── database/         # MongoDB client, repositories, schemas
 ├── config/           # Environment, categories, constants
@@ -152,13 +152,6 @@ npm run build        # Build for production
 npm run lint         # Check code style
 ```
 
-### LLM Provider
-
-Switch between cloud and local LLM via `LLM_PROVIDER` in `.env.development`:
-
-- `gemini` — Google Gemini Flash (default, free tier: 15 req/min)
-- `ollama` — Local model via Ollama (e.g., qwen2.5:14b-instruct) — see [LOCAL_LLM_SETUP.md](LOCAL_LLM_SETUP.md)
-
 ---
 
 ## Documentation
@@ -168,7 +161,6 @@ Switch between cloud and local LLM via `LLM_PROVIDER` in `.env.development`:
 | [CLAUDE.md](claude.md) | Project rules for Claude Code |
 | [CONTEXT.md](CONTEXT.md) | Architecture, patterns, guidelines |
 | [spec.md](spec.md) | Product specification |
-| [LOCAL_LLM_SETUP.md](LOCAL_LLM_SETUP.md) | Ollama setup guide |
 
 ---
 

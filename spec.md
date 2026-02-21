@@ -48,9 +48,9 @@ Every input is normalized into a **Transaction**:
 | currency | EUR / USD / GBP | Default: EUR |
 | vendor | string | Merchant name (required) |
 | category | string | See Section 4 |
-| recurring | yes / no / unknown | Auto-detected |
+| recurring | yes / no / unknown | Auto-detected (default: unknown) |
 | notes | string? | Optional |
-| confidenceScore | 0.0–1.0 | Agent's certainty |
+| confidenceScore | 0.0–1.0 | Agent's certainty (default: 0.5) |
 
 ---
 
@@ -84,9 +84,9 @@ Every input is normalized into a **Transaction**:
 ## 5. Agent Capabilities
 
 ### Log expenses
-1. Check for duplicates (same vendor, amount, ±7 days)
-2. If duplicate found → ask user to confirm
-3. If no duplicate → store transaction
+1. Call store-transaction (auto-checks for duplicates: same vendor, amount ±5%, ±7 days)
+2. If duplicate found → show matches, ask user to confirm
+3. If confirmed → re-call with force=true to store anyway
 4. Reply: `Logged: €{amount} — {category} — {date} ✅`
 
 ### Query transactions
@@ -127,6 +127,7 @@ Every input is normalized into a **Transaction**:
 - Subscriptions flagged as recurring
 
 ### Duplicate Detection
+- Built into store-transaction tool
 - ±5% amount tolerance
 - 7-day date window
 - Ask before storing if match found
@@ -154,14 +155,15 @@ Every input is normalized into a **Transaction**:
 ## 8. Implementation Status
 
 ### Implemented
-- Text expense logging with duplicate detection
+- Text expense logging with built-in duplicate detection
 - Full CRUD (create, query, update, delete transactions)
 - Spending summary workflow with chart visualization (pie/bar)
 - Photo/voice/document processing via agent vision
-- Conversation memory (last 5 messages per user)
+- Conversation memory (last 3 messages per user)
 - `/summary` command with period and chart type options
 - Structured logging (Mastra PinoLogger)
-- Retry logic for empty Ollama responses
+- Performance optimized (~3s response with Gemini Flash + thinkingBudget: 0)
+- Dockerized for Railway deployment
 
 ### Not Yet Implemented
 - Recurring bill tracking (detect missing bills, abnormal increases)
@@ -171,4 +173,4 @@ Every input is normalized into a **Transaction**:
 
 ---
 
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-02-21

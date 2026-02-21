@@ -18,7 +18,9 @@ export const transactionQueryTool = createTool({
     'Fetches transactions from the database. Supports: recent N transactions, specific date, or date range. Returns a list of transactions with id, date, amount, currency, vendor, category.',
   inputSchema: QueryTransactionInputSchema,
   outputSchema: QueryTransactionOutputSchema,
-  execute: async (input) => {
+  execute: async (input, { mastra }) => {
+    const logger = mastra?.getLogger();
+    const t0 = Date.now();
     try {
       const { userId, queryType, limit, date, startDate, endDate } = input;
       let transactions;
@@ -57,12 +59,15 @@ export const transactionQueryTool = createTool({
         }
       }
 
+      logger?.info('[TIMING] query-transactions', { elapsed: `${Date.now() - t0}ms`, queryType, count: transactions.length });
+
       return {
         success: true,
         transactions: transactions.map(serializeTransaction),
         count: transactions.length,
       };
     } catch (error) {
+      logger?.error('query-transactions error', { error, elapsed: `${Date.now() - t0}ms` });
       return {
         success: false,
         transactions: [],

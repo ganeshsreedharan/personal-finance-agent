@@ -21,8 +21,7 @@ Telegram bot that tracks personal finances using AI. Users send expenses as text
 | Agent Memory | @mastra/memory | latest |
 | Storage | @mastra/mongodb | latest |
 | Logging | @mastra/loggers (Pino) | latest |
-| Cloud LLM | @ai-sdk/google (Gemini) | 3.x |
-| Local LLM | ollama-ai-provider-v2 (Ollama) | 3.x |
+| LLM | @ai-sdk/google (Gemini Flash) | 3.x |
 | Schema | zod | 4.x |
 | Bot | grammy | latest |
 | Charts | chartjs-node-canvas + chart.js | latest |
@@ -41,8 +40,9 @@ User → Telegram → grammY Bot → Mastra Agent → Tools (DB/workflow) → Mo
 - Agent parses, categorizes, and reasons in a single LLM call
 - Tools are simple operations (DB reads/writes, workflow triggers)
 - Workflows handle multi-step processes (summary = fetch data + agent report)
-- Memory provides conversation context (last 5 messages per user)
+- Memory provides conversation context (last 3 messages per user)
 - All logging via Mastra PinoLogger (structured JSON)
+- thinkingBudget: 0 disables Gemini reasoning tokens for fast responses (~3s)
 
 ## Key Files
 
@@ -50,15 +50,14 @@ User → Telegram → grammY Bot → Mastra Agent → Tools (DB/workflow) → Mo
 |------|---------|
 | **Mastra Core** | |
 | `src/mastra/mastra.instance.ts` | Mastra instance (agents, workflows, storage, logger) |
-| `src/mastra/agents/finance.agent.ts` | Finance agent (instructions, model config, 7 tools) |
-| `src/mastra/memory.ts` | Agent memory config (lastMessages: 5, no semantic recall) |
+| `src/mastra/agents/finance.agent.ts` | Finance agent (instructions, model config, 5 tools) |
+| `src/mastra/memory.ts` | Agent memory config (lastMessages: 3, no semantic recall) |
 | `src/mastra/storage.ts` | Shared MongoDBStore (single connection for Mastra + Memory) |
 | **Tools** | |
-| `src/mastra/tools/transaction-storage.tool.ts` | Store transaction |
+| `src/mastra/tools/transaction-storage.tool.ts` | Store transaction (with built-in duplicate check) |
 | `src/mastra/tools/transaction-query.tool.ts` | Query transactions |
 | `src/mastra/tools/transaction-update.tool.ts` | Update transaction |
 | `src/mastra/tools/transaction-delete.tool.ts` | Delete transaction |
-| `src/mastra/tools/transaction-duplicate-check.tool.ts` | Check for duplicates |
 | `src/mastra/tools/spending-summary.tool.ts` | Run summary workflow (agent-callable) |
 | **Workflows** | |
 | `src/mastra/workflows/spending-summary.workflow.ts` | 2-step: fetch data → agent summary |
@@ -72,21 +71,23 @@ User → Telegram → grammY Bot → Mastra Agent → Tools (DB/workflow) → Mo
 | `src/database/repositories/transaction.repository.ts` | MongoDB queries + aggregations |
 | `src/database/client.ts` | MongoDB client + indexes + TTL cleanup |
 | **Config** | |
-| `src/config/constants.ts` | LLM provider config, categories, thresholds |
+| `src/config/constants.ts` | Gemini config, categories, thresholds |
 | `src/config/environment.ts` | Env validation with zod |
 | **Utils** | |
 | `src/utils/chart.ts` | Server-side pie/bar chart generation (chartjs-node-canvas) |
+| **Deploy** | |
+| `Dockerfile` | Multi-stage Docker build for Railway |
 
-## LLM Providers
+## LLM Provider
 
-Both use direct AI SDK providers (not Mastra model router strings):
+Uses Google Gemini Flash via direct AI SDK provider:
 
 ```typescript
-import { google } from '@ai-sdk/google';           // Cloud
-import { createOllama } from 'ollama-ai-provider-v2'; // Local
+import { google } from '@ai-sdk/google';
+model: google('gemini-flash-latest')
 ```
 
-Switch via `LLM_PROVIDER=gemini` or `LLM_PROVIDER=ollama` in `.env.development`.
+Performance: thinkingBudget: 0 applied at `agent.generate()` level to disable Gemini's built-in reasoning tokens. Response time: ~3s.
 
 ## Telegram Commands
 

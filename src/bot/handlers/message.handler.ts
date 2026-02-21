@@ -112,7 +112,9 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
     const today = new Date().toISOString().split('T')[0];
     const userContent = `${message}\n\nContext: userId="${ctx.userId}", today="${today}"`;
 
-    const llmStart = Date.now();
+    const t0 = Date.now();
+    logger.info('[TIMING] Starting agent.generate', { userId: ctx.userId });
+
     const response = await agent.generate([
       { role: 'user', content: userContent },
     ], {
@@ -120,11 +122,22 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
         thread: ctx.userId,
         resource: ctx.userId,
       },
+      providerOptions: {
+        google: { thinkingConfig: { thinkingBudget: 0 } },
+      },
+      onStepFinish: (step: { stepType?: string; toolCalls?: unknown[]; text?: string }) => {
+        logger.info('[TIMING] Step finished', {
+          elapsed: `${Date.now() - t0}ms`,
+          stepType: step.stepType,
+          tools: (step.toolCalls as Array<{ toolName?: string }>)?.map(t => t.toolName) || [],
+          text: step.text?.substring(0, 80) || '',
+        });
+      },
     });
-    const elapsed = Date.now() - llmStart;
-    logger.info('Agent responded', {
+    const elapsed = Date.now() - t0;
+    logger.info('[TIMING] Agent total', {
       userId: ctx.userId,
-      elapsed,
+      elapsed: `${elapsed}ms`,
       steps: response.steps?.length || 0,
       text: response.text?.substring(0, 100) || '(empty)',
     });
@@ -154,7 +167,7 @@ export const handleTextMessage = async (ctx: BotContext): Promise<void> => {
       const retry = await agent.generate([
         { role: 'user', content: `The user said: "${message}". Please respond helpfully based on conversation history.\n\nContext: userId="${ctx.userId}", today="${today}"` },
       ], {
-        maxSteps: 1,
+        maxSteps: 3,
         memory: {
           thread: ctx.userId,
           resource: ctx.userId,

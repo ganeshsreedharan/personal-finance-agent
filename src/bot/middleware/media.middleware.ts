@@ -1,10 +1,9 @@
 import type { BotContext, MediaFile } from '../telegram.js';
-import { env, LLM_PROVIDER } from '../../config/index.js';
+import { env } from '../../config/index.js';
 
 /**
  * Media middleware — runs before media handlers.
- * 1. Checks if the current model supports multimodal input (short-circuits for Ollama)
- * 2. Downloads the file from Telegram and attaches it to ctx.mediaFile
+ * Downloads the file from Telegram and attaches it to ctx.mediaFile.
  */
 export const mediaMiddleware = async (ctx: BotContext, next: () => Promise<void>): Promise<void> => {
   const msg = ctx.message;
@@ -12,15 +11,6 @@ export const mediaMiddleware = async (ctx: BotContext, next: () => Promise<void>
 
   if (!hasMedia) {
     await next();
-    return;
-  }
-
-  // Local models don't support multimodal input — respond immediately
-  if (LLM_PROVIDER.DEFAULT === 'ollama') {
-    await ctx.reply(
-      'Media processing is not supported with the local model.\n\n' +
-        'Please send your transaction as text instead (e.g., "Groceries 45€ at REWE").'
-    );
     return;
   }
 

@@ -117,14 +117,18 @@ export const StoreTransactionInputSchema = ToolUserIdSchema.extend({
   currency: z.enum(SUPPORTED_CURRENCIES).describe('Currency code'),
   vendor: z.string().min(1, 'Vendor is required').describe('Vendor or merchant name'),
   category: z.string().describe('Transaction category'),
-  recurring: z.enum(['yes', 'no', 'unknown']).describe('Recurring status'),
+  recurring: z.enum(['yes', 'no', 'unknown']).default('unknown').describe('Recurring status'),
   notes: z.string().optional().describe('Additional notes'),
-  confidenceScore: z.number().min(0).max(1).describe('Confidence score'),
+  confidenceScore: z.number().min(0).max(1).default(0.5).describe('Confidence score (defaults to 0.5)'),
+  force: z.boolean().optional().describe('Set true to skip duplicate check (when user confirms logging despite duplicates)'),
 });
 
 export const StoreTransactionOutputSchema = z.object({
   success: z.boolean().describe('Whether storage was successful'),
   transactionId: z.string().optional().describe('ID of saved transaction'),
+  hasDuplicates: z.boolean().optional().describe('True if similar transactions found (success will be false)'),
+  duplicates: z.array(TransactionResultSchema).optional().describe('Existing similar transactions'),
+  duplicateCount: z.number().optional().describe('Number of duplicates found'),
   error: z.string().optional().describe('Error message if failed'),
 });
 
@@ -175,20 +179,6 @@ export const DeleteTransactionInputSchema = z.object({
 export const DeleteTransactionOutputSchema = z.object({
   success: z.boolean(),
   error: z.string().optional(),
-});
-
-// ── Check Duplicates ──
-
-export const CheckDuplicatesInputSchema = ToolUserIdSchema.extend({
-  vendor: z.string().describe('Vendor name to check'),
-  amount: z.number().positive().describe('Amount to check'),
-  date: z.string().describe('Date in ISO format YYYY-MM-DD'),
-});
-
-export const CheckDuplicatesOutputSchema = z.object({
-  hasDuplicates: z.boolean(),
-  duplicates: z.array(TransactionResultSchema),
-  count: z.number(),
 });
 
 // ── Spending Summary ──

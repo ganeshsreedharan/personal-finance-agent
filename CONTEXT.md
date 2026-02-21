@@ -35,10 +35,10 @@ Result: 1 LLM call, low cost, low latency
 │                                                              │
 │  Features:                                                   │
 │  ├─ Typing indicator while agent thinks                     │
-│  ├─ Retry logic for empty Ollama responses                  │
 │  ├─ Tool result fallback (extractToolReply)                 │
 │  ├─ Chart generation for spending summaries                 │
-│  └─ Structured logging via Mastra PinoLogger                │
+│  ├─ Structured logging via Mastra PinoLogger                │
+│  └─ thinkingBudget: 0 to disable Gemini reasoning tokens   │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            │ agent.generate() with memory
@@ -50,14 +50,14 @@ Result: 1 LLM call, low cost, low latency
 │  REASONING (in single LLM call):                            │
 │  ├─ Parse: amount, currency, vendor, date                   │
 │  ├─ Categorize: category, recurring status                  │
-│  ├─ Duplicate check before storing                          │
+│  ├─ Store with built-in duplicate check                     │
 │  ├─ Query/update/delete existing transactions               │
 │  ├─ Trigger spending summary workflow                       │
 │  └─ Generate friendly response                              │
 │                                                              │
-│  MODEL: Gemini (cloud) or Ollama (local)                    │
-│  MEMORY: Last 5 messages per thread (MongoDB)               │
-│  TOOLS: 7 tools (see below)                                 │
+│  MODEL: Google Gemini Flash (gemini-flash-latest)            │
+│  MEMORY: Last 3 messages per thread (MongoDB)               │
+│  TOOLS: 5 tools (see below)                                 │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            │ tool.execute()
@@ -65,11 +65,10 @@ Result: 1 LLM call, low cost, low latency
 ┌─────────────────────────────────────────────────────────────┐
 │                         Tools (Simple)                        │
 │                                                              │
-│  store-transaction      → DB write                          │
+│  store-transaction      → DB write (with duplicate check)   │
 │  query-transactions     → DB read                           │
 │  update-transaction     → DB update                         │
 │  delete-transaction     → DB delete                         │
-│  check-duplicates       → DB query (similar txns)           │
 │  spending-summary       → Runs workflow (fetch + summarize) │
 │                                                              │
 │  ALL tools: NO LLM calls, <50 lines, simple operations     │
@@ -138,7 +137,7 @@ Output: Text summary + pie/bar chart image sent to Telegram
 ```
 storage.ts (shared MongoDBStore — single connection)
   ↑
-memory.ts (Memory config: lastMessages=5, semanticRecall=false)
+memory.ts (Memory config: lastMessages=3, semanticRecall=false)
   ↑
 finance.agent.ts (uses agentMemory)
   ↑
@@ -147,9 +146,20 @@ mastra.instance.ts (uses shared store + agent)
 
 Key design decisions:
 - **Single MongoDBStore** shared between Mastra instance and agent Memory (1 connection, not 2)
-- **lastMessages: 5** — enough context for expense conversations without overhead
+- **lastMessages: 3** — minimal context for expense conversations without overhead
 - **semanticRecall: false** — no vector search needed for a finance bot
 - **TTL indexes: 90 days** — auto-cleanup old threads/messages in Mastra DB
+
+---
+
+## Performance Optimizations
+
+Key optimizations applied to reduce response time from ~66s to ~3s:
+
+1. **thinkingBudget: 0** — Disables Gemini 2.5 Flash's built-in reasoning tokens (was consuming ~18s per call). Applied via `providerOptions` in `agent.generate()`.
+2. **Merged duplicate check into store tool** — Eliminated 1 LLM roundtrip per expense (3 steps → 2 steps). The store-transaction tool now internally checks for duplicates.
+3. **Reduced memory to 3 messages** — Less context to process per request.
+4. **Compact agent instructions** — ~60% shorter instructions, fewer tokens per call.
 
 ---
 
@@ -166,15 +176,19 @@ This keeps tool and workflow files focused on pure logic.
 
 ---
 
-## Ollama-Specific Workarounds
+## LLM Configuration
 
-The Ollama models (qwen2.5, etc.) have known issues that require workarounds:
+Uses Google Gemini Flash via the AI SDK provider:
 
-1. **Empty responses after tool calls**: `extractToolReply()` constructs replies from tool results
-2. **Retry logic**: If model returns empty, handler retries with explicit prompt
-3. **Language mixing**: Agent instructions enforce "MUST ALWAYS respond in English"
-4. **Wrong year**: Today's date injected via context string
-5. **Vendor missing on follow-ups**: Schema enforces `min(1)` on vendor field
+```typescript
+import { google } from '@ai-sdk/google';
+
+model: google('gemini-flash-latest')
+```
+
+**Why direct provider**: Full control over model config, native Google AI SDK integration, no wrapper overhead.
+
+**thinkingBudget: 0**: Gemini 2.5 Flash has built-in "thinking" mode enabled by default. This adds ~18s of hidden reasoning per call. Disabled via `providerOptions` at the `agent.generate()` level.
 
 ---
 
@@ -188,27 +202,6 @@ logger.info('Agent responded', { userId, elapsed, steps });
 logger.warn('Empty response, retrying', { userId, message });
 logger.error('Tool error', { error });
 ```
-
----
-
-## LLM Provider Configuration
-
-Both providers use direct AI SDK packages — NOT Mastra's model router strings.
-
-```typescript
-import { google } from '@ai-sdk/google';           // Cloud
-import { createOllama } from 'ollama-ai-provider-v2'; // Local
-
-const getModelConfig = () => {
-  if (LLM_PROVIDER.DEFAULT === 'ollama') {
-    const ollama = createOllama({ baseURL: `${OLLAMA_CONFIG.BASE_URL}/api` });
-    return ollama(OLLAMA_CONFIG.MODEL_NAME);
-  }
-  return google(GEMINI_CONFIG.MODEL_NAME);
-};
-```
-
-**Why direct providers**: Full control, native Ollama API, no env variable hacks.
 
 ---
 
@@ -230,21 +223,22 @@ Before implementing any new feature:
 
 ### Implemented
 - ✅ Proper agentic pattern — agent does all reasoning
-- ✅ 7 tools: store, query, update, delete, duplicates, spending-summary
+- ✅ 5 tools: store (with duplicate check), query, update, delete, spending-summary
 - ✅ Spending summary workflow with chart visualisation (pie/bar)
-- ✅ Conversation memory (last 5 messages, shared MongoDBStore)
+- ✅ Conversation memory (last 3 messages, shared MongoDBStore)
 - ✅ Photo/voice/document handling via agent vision
-- ✅ Duplicate detection before storing
-- ✅ Retry logic for Ollama empty responses
+- ✅ Duplicate detection built into store tool
 - ✅ Structured logging via Mastra PinoLogger
 - ✅ TTL indexes for 90-day memory auto-cleanup
 - ✅ /summary command with chart types
+- ✅ Performance optimized (~3s response time with thinkingBudget: 0)
+- ✅ Dockerfile for Railway deployment
 
 ### Architecture Decisions
 - Single MongoDBStore (not separate connections)
-- No observability overhead (removed @mastra/observability)
 - Schemas in dedicated files (database/schema.ts, workflows/schema.ts)
 - Module-level logger instances (not per-call)
+- Gemini-only (no local LLM provider)
 
 ---
 
@@ -252,4 +246,4 @@ Before implementing any new feature:
 
 ---
 
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-02-21

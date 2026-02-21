@@ -11,7 +11,7 @@ import { mastraStore } from './storage.js';
 export const agentMemory = new Memory({
   storage: mastraStore,
   options: {
-    lastMessages: 5,
+    lastMessages: 3,
     semanticRecall: false,
   },
 });
